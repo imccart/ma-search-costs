@@ -1,0 +1,32 @@
+---
+title: "MA Search Costs"
+author: "Ian McCarthy"
+date: today
+format:
+  pdf:
+    documentclass: article
+    number-sections: true
+    fontsize: 12pt
+    geometry: margin=1in
+    latex-engine: xelatex
+    cite-method: natbib
+bibliography: BibTeX_Library.bib
+biblio-style: aer
+---
+
+# Introduction
+
+# Background
+
+# Data
+
+# Empirical Strategy
+
+# Results
+
+# Discussion
+
+# Conclusion
+
+\bibliographystyle{aer}
+\bibliography{BibTeX_Library}

@@ -1,0 +1,35 @@
+# Data (track code, not data)
+data/
+
+# Scratch/temporary files
+scratch/
+
+# LaTeX intermediate files
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.run.xml
+*.synctex.gz
+*.lof
+*.lot
+*.idx
+*.ilg
+*.ind
+
+# Quarto intermediates
+_freeze/
+_site/
+.quarto/
+
+# OS files
+.DS_Store
+Thumbs.db
