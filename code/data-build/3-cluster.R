@@ -55,20 +55,6 @@ cluster_county_year <- function(plans, vars) {
 # Process one year
 # ---------------------------------------------------------------------------
 
-cluster_with_vars <- function(ma_df, vars) {
-  # Helper: run cluster_county_year over each county_fips in ma_df using `vars`
-  # as the feature set. Returns (county_fips, n_plans, agg_val).
-  ma_df %>%
-    select(county_fips, all_of(vars)) %>%
-    nest(.by = county_fips) %>%
-    mutate(
-      result  = map(data, ~ cluster_county_year(.x, vars)),
-      n_plans = map_int(result, "n_plans"),
-      agg_val = map_dbl(result, "agg_val")
-    ) %>%
-    select(county_fips, n_plans, agg_val)
-}
-
 cluster_year <- function(yr) {
   message("Clustering ", yr)
 
@@ -95,7 +81,7 @@ cluster_year <- function(yr) {
     ) %>%
     mutate(county_fips = str_pad(fips, 5, side = "left", pad = "0"))
 
-  available_full   <- intersect(raw_vars, names(ma))
+  available_full <- intersect(raw_vars, names(ma))
   available_stable <- if (!is.null(raw_vars_prev)) {
     intersect(intersect(raw_vars, raw_vars_prev), names(ma))
   } else {
@@ -105,12 +91,28 @@ cluster_year <- function(yr) {
   message("  Rating vars: full=", length(available_full),
           "; stable (∩ prior year)=", length(available_stable))
 
-  out_full <- cluster_with_vars(ma, available_full) %>%
-    rename(n_plans_clust = n_plans)
+  # Cluster on the full year-t roster
+  out_full <- ma %>%
+    select(county_fips, all_of(available_full)) %>%
+    nest(.by = county_fips) %>%
+    mutate(
+      result        = map(data, ~ cluster_county_year(.x, available_full)),
+      n_plans_clust = map_int(result, "n_plans"),
+      agg_val       = map_dbl(result, "agg_val")
+    ) %>%
+    select(county_fips, n_plans_clust, agg_val)
 
+  # Cluster again on the intersection with year-(t-1) roster, if defined
   if (length(available_stable) >= 2) {
-    out_stable <- cluster_with_vars(ma, available_stable) %>%
-      rename(n_plans_stable = n_plans, agg_val_stable = agg_val)
+    out_stable <- ma %>%
+      select(county_fips, all_of(available_stable)) %>%
+      nest(.by = county_fips) %>%
+      mutate(
+        result         = map(data, ~ cluster_county_year(.x, available_stable)),
+        n_plans_stable = map_int(result, "n_plans"),
+        agg_val_stable = map_dbl(result, "agg_val")
+      ) %>%
+      select(county_fips, n_plans_stable, agg_val_stable)
     out <- left_join(out_full, out_stable, by = "county_fips")
   } else {
     out <- out_full %>%

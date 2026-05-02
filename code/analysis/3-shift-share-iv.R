@@ -19,8 +19,8 @@
 # effect in 2011), so this is plausible.
 #
 # Specs:
-#   - First stage: log(n_plans) on bartik_pffs (and bartik_total for robustness)
-#   - Reduced form: pct_enrollment_dominated on bartik_pffs
+#   - First stage: log(n_plans) on bartik (PFFS, sum-of-types, insurer-level)
+#   - Reduced form: pct_enrollment_dominated on bartik
 #   - 2SLS: pct_enrollment_dominated on instrumented log(n_plans)
 #
 # Input:  data/output/analysis_panel.csv (with bartik columns merged in)
@@ -48,25 +48,25 @@ stopifnot(all(c("bartik_pffs", "bartik_total", "bartik_insurer") %in% names(pane
 message("Analysis panel: ", nrow(panel), " county-years (",
         min(panel$year), "-", max(panel$year), ")")
 
-ctrl_rhs <- "log_inc + pct_65plus + pct_bachelors_p + log_pop"
-
 # ---------------------------------------------------------------------------
 # First stage — log(n_plans) on bartik
 # ---------------------------------------------------------------------------
 
 fs_pffs <- feols(
-  as.formula(paste("log_n_plans ~ bartik_pffs +", ctrl_rhs, "| state + year")),
+  log_n_plans ~ bartik_pffs + log_inc + pct_65plus + pct_bachelors_p + log_pop |
+    state + year,
   data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
 )
 
 fs_total <- feols(
-  as.formula(paste("log_n_plans ~ bartik_total +", ctrl_rhs, "| state + year")),
+  log_n_plans ~ bartik_total + log_inc + pct_65plus + pct_bachelors_p + log_pop |
+    state + year,
   data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
 )
 
 fs_ins <- feols(
-  as.formula(paste("log_n_plans ~ bartik_insurer +", ctrl_rhs,
-                   "| state + year")),
+  log_n_plans ~ bartik_insurer + log_inc + pct_65plus + pct_bachelors_p + log_pop |
+    state + year,
   data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
 )
 
@@ -75,20 +75,20 @@ fs_ins <- feols(
 # ---------------------------------------------------------------------------
 
 rf_pffs <- feols(
-  as.formula(paste("pct_enrollment_dominated ~ bartik_pffs +", ctrl_rhs,
-                   "| state + year")),
+  pct_enrollment_dominated ~ bartik_pffs + log_inc + pct_65plus +
+    pct_bachelors_p + log_pop | state + year,
   data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
 )
 
 rf_total <- feols(
-  as.formula(paste("pct_enrollment_dominated ~ bartik_total +", ctrl_rhs,
-                   "| state + year")),
+  pct_enrollment_dominated ~ bartik_total + log_inc + pct_65plus +
+    pct_bachelors_p + log_pop | state + year,
   data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
 )
 
 rf_ins <- feols(
-  as.formula(paste("pct_enrollment_dominated ~ bartik_insurer +", ctrl_rhs,
-                   "| state + year")),
+  pct_enrollment_dominated ~ bartik_insurer + log_inc + pct_65plus +
+    pct_bachelors_p + log_pop | state + year,
   data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
 )
 
@@ -97,20 +97,20 @@ rf_ins <- feols(
 # ---------------------------------------------------------------------------
 
 iv_pffs <- feols(
-  as.formula(paste("pct_enrollment_dominated ~", ctrl_rhs,
-                   "| state + year | log_n_plans ~ bartik_pffs")),
+  pct_enrollment_dominated ~ log_inc + pct_65plus + pct_bachelors_p + log_pop |
+    state + year | log_n_plans ~ bartik_pffs,
   data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
 )
 
 iv_total <- feols(
-  as.formula(paste("pct_enrollment_dominated ~", ctrl_rhs,
-                   "| state + year | log_n_plans ~ bartik_total")),
+  pct_enrollment_dominated ~ log_inc + pct_65plus + pct_bachelors_p + log_pop |
+    state + year | log_n_plans ~ bartik_total,
   data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
 )
 
 iv_ins <- feols(
-  as.formula(paste("pct_enrollment_dominated ~", ctrl_rhs,
-                   "| state + year | log_n_plans ~ bartik_insurer")),
+  pct_enrollment_dominated ~ log_inc + pct_65plus + pct_bachelors_p + log_pop |
+    state + year | log_n_plans ~ bartik_insurer,
   data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
 )
 
@@ -119,34 +119,43 @@ iv_ins <- feols(
 # ---------------------------------------------------------------------------
 
 cat("\n========== FIRST STAGE: log(n_plans) on Bartik ==========\n")
-walk2(list(fs_pffs, fs_total, fs_ins),
-      c("PFFS-only", "Sum-of-types", "Insurer-level"),
-      ~ { cat("\n--- ", .y, " ---\n", sep = ""); print(summary(.x)) })
+cat("\n--- PFFS-only ---\n")
+print(summary(fs_pffs))
+cat("\n--- Sum-of-types ---\n")
+print(summary(fs_total))
+cat("\n--- Insurer-level ---\n")
+print(summary(fs_ins))
 
 cat("\n========== REDUCED FORM: outcome on Bartik ==========\n")
-walk2(list(rf_pffs, rf_total, rf_ins),
-      c("PFFS-only", "Sum-of-types", "Insurer-level"),
-      ~ { cat("\n--- ", .y, " ---\n", sep = ""); print(summary(.x)) })
+cat("\n--- PFFS-only ---\n")
+print(summary(rf_pffs))
+cat("\n--- Sum-of-types ---\n")
+print(summary(rf_total))
+cat("\n--- Insurer-level ---\n")
+print(summary(rf_ins))
 
 cat("\n========== 2SLS ==========\n")
-walk2(list(iv_pffs, iv_total, iv_ins),
-      c("PFFS-only", "Sum-of-types", "Insurer-level"),
-      ~ { cat("\n--- ", .y, " ---\n", sep = ""); print(summary(.x)) })
+cat("\n--- PFFS-only ---\n")
+print(summary(iv_pffs))
+cat("\n--- Sum-of-types ---\n")
+print(summary(iv_total))
+cat("\n--- Insurer-level ---\n")
+print(summary(iv_ins))
 
 # ---------------------------------------------------------------------------
 # Combined table
 # ---------------------------------------------------------------------------
 
 models <- list(
-  "FS: PFFS"       = fs_pffs,
-  "FS: Total"      = fs_total,
-  "FS: Insurer"    = fs_ins,
-  "RF: PFFS"       = rf_pffs,
-  "RF: Total"      = rf_total,
-  "RF: Insurer"    = rf_ins,
-  "2SLS: PFFS"     = iv_pffs,
-  "2SLS: Total"    = iv_total,
-  "2SLS: Insurer"  = iv_ins
+  "FS: PFFS"      = fs_pffs,
+  "FS: Total"     = fs_total,
+  "FS: Insurer"   = fs_ins,
+  "RF: PFFS"      = rf_pffs,
+  "RF: Total"     = rf_total,
+  "RF: Insurer"   = rf_ins,
+  "2SLS: PFFS"    = iv_pffs,
+  "2SLS: Total"   = iv_total,
+  "2SLS: Insurer" = iv_ins
 )
 
 coef_labels <- c(

@@ -129,16 +129,20 @@ modelsummary(
 )
 
 # Print each spec to the console for inspection
-walk2(models, names(models), ~ {
-  cat("\n--- ", .y, " ---\n", sep = "")
-  print(summary(.x))
-})
+cat("\n--- (1) Headline ---\n")
+print(summary(m1))
+cat("\n--- (2) + Differentiation ---\n")
+print(summary(m2))
+cat("\n--- (3) Supply-side (% plans) ---\n")
+print(summary(m3))
+cat("\n--- (4) n_plans bins ---\n")
+print(summary(m4))
 
 # ---------------------------------------------------------------------------
 # Spec 4 figure: bin coefficients with CIs
 # ---------------------------------------------------------------------------
 
-bin_coefs <- broom::tidy(m4, conf.int = TRUE) %>%
+bin_coefs <- tidy(m4, conf.int = TRUE) %>%
   filter(str_detect(term, "n_plans_bin")) %>%
   mutate(bin = str_remove(term, "n_plans_bin"),
          bin = factor(bin, levels = c("mid", "high"))) %>%

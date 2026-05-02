@@ -46,15 +46,13 @@ message("Sample with both agg_val and agg_val_stable: ",
 message("methodology_shift summary:")
 print(summary(dec_sample$methodology_shift))
 
-ctrl_rhs <- "log_inc + pct_65plus + pct_bachelors_p + log_pop"
-
 # ---------------------------------------------------------------------------
 # Headline (replicates spec 2 of 2-reduced-form.R) — full agg_val
 # ---------------------------------------------------------------------------
 
 m_full <- feols(
-  as.formula(paste("pct_enrollment_dominated ~ log_n_plans + agg_val +",
-                   ctrl_rhs, "| state + year")),
+  pct_enrollment_dominated ~ log_n_plans + agg_val + log_inc + pct_65plus +
+    pct_bachelors_p + log_pop | state + year,
   data    = dec_sample,
   weights = ~ total_enrollment,
   cluster = ~ county_fips
@@ -65,8 +63,8 @@ m_full <- feols(
 # ---------------------------------------------------------------------------
 
 m_stable <- feols(
-  as.formula(paste("pct_enrollment_dominated ~ log_n_plans + agg_val_stable +",
-                   ctrl_rhs, "| state + year")),
+  pct_enrollment_dominated ~ log_n_plans + agg_val_stable + log_inc +
+    pct_65plus + pct_bachelors_p + log_pop | state + year,
   data    = dec_sample,
   weights = ~ total_enrollment,
   cluster = ~ county_fips
@@ -77,9 +75,9 @@ m_stable <- feols(
 # ---------------------------------------------------------------------------
 
 m_decomp <- feols(
-  as.formula(paste("pct_enrollment_dominated ~ log_n_plans + agg_val_stable",
-                   "+ methodology_shift +", ctrl_rhs,
-                   "| state + year")),
+  pct_enrollment_dominated ~ log_n_plans + agg_val_stable +
+    methodology_shift + log_inc + pct_65plus + pct_bachelors_p + log_pop |
+    state + year,
   data    = dec_sample,
   weights = ~ total_enrollment,
   cluster = ~ county_fips
@@ -90,10 +88,12 @@ m_decomp <- feols(
 # ---------------------------------------------------------------------------
 
 cat("\n========== Decomposition specs ==========\n")
-walk2(list(m_full, m_stable, m_decomp),
-      c("agg_val (full)", "agg_val_stable (intersection roster)",
-        "decomposition (stable + methodology shift)"),
-      ~ { cat("\n--- ", .y, " ---\n", sep = ""); print(summary(.x)) })
+cat("\n--- Full agg_val ---\n")
+print(summary(m_full))
+cat("\n--- Stable agg_val (intersection roster) ---\n")
+print(summary(m_stable))
+cat("\n--- Decomposition (stable + methodology shift) ---\n")
+print(summary(m_decomp))
 
 # ---------------------------------------------------------------------------
 # Combined table
