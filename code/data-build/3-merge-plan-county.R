@@ -9,7 +9,10 @@
 # 1. Read enrollment spine
 # ---------------------------------------------------------------------------
 
-enrollment <- read_csv("data/output/enrollment.csv", show_col_types = FALSE)
+enrollment <- read_csv(
+  "data/output/enrollment.csv", show_col_types = FALSE,
+  col_types = cols(county_fips = col_character(), .default = col_guess())
+)
 message("Enrollment spine: ", nrow(enrollment), " rows")
 
 # ---------------------------------------------------------------------------

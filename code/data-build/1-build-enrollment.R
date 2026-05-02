@@ -36,19 +36,20 @@ read_ma_year <- function(yr) {
     "riskscore_partc"
   )
 
-  df <- read_tsv(fpath, col_types = cols(.default = "c"), show_col_types = FALSE)
-  available <- intersect(keep_cols, names(df))
-  df <- df %>% select(all_of(available))
-
   num_cols <- c("planid", "avg_enrollment", "first_enrollment", "last_enrollment",
                 "Star_Rating", "basic_premium", "bid", "ma_rate",
                 "avg_ffscost", "riskscore_partc")
-  for (col in intersect(num_cols, names(df))) {
-    df[[col]] <- suppressWarnings(as.numeric(df[[col]]))
-  }
 
-  df$year <- as.integer(yr)
-  df
+  # Note: upstream MA repo writes fips as numeric-stringified (4 chars for
+  # state codes 01-09). Zero-pad to a clean 5-char county_fips at the boundary.
+  read_tsv(fpath, col_types = cols(.default = "c"), show_col_types = FALSE) %>%
+    select(any_of(keep_cols)) %>%
+    mutate(
+      across(any_of(num_cols), ~ suppressWarnings(as.numeric(.x))),
+      county_fips = str_pad(fips, 5, side = "left", pad = "0"),
+      year = as.integer(yr)
+    ) %>%
+    select(-fips)
 }
 
 message("Reading MA repo data...")

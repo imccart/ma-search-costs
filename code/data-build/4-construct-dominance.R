@@ -164,7 +164,10 @@ compute_plan_costs <- function(premium, deductible, moop,
 # Read merged data
 # ---------------------------------------------------------------------------
 
-df <- read_csv("data/output/plan_county_benefits.csv", show_col_types = FALSE)
+df <- read_csv(
+  "data/output/plan_county_benefits.csv", show_col_types = FALSE,
+  col_types = cols(county_fips = col_character(), .default = col_guess())
+)
 message("Read ", nrow(df), " rows")
 
 df <- df %>%
@@ -211,7 +214,7 @@ message("Plans eligible for cost-curve comparison: ", nrow(df_compare),
 # Dominance comparisons are within county-year-plantype-partd groups.
 # A PPO is never dominated by an HMO (different network value).
 # A plan with Part D is never dominated by one without (different benefit scope).
-message("\nComparison groups: fips x year x plan_category x has_partd")
+message("\nComparison groups: county_fips x year x plan_category x has_partd")
 
 # ---------------------------------------------------------------------------
 # Compute cost at each profile for every plan
@@ -352,7 +355,7 @@ message(sprintf("SD of cost: mean=$%.0f, median=$%.0f",
 df_compare$row_idx <- seq_len(nrow(df_compare))
 
 group_indices <- df_compare %>%
-  group_by(fips, year, plan_category, has_partd) %>%
+  group_by(county_fips, year, plan_category, has_partd) %>%
   summarize(rows = list(row_idx), .groups = "drop")
 
 message("\nChecking dominance across ", nrow(group_indices),
@@ -466,7 +469,7 @@ message("\nWrote data/output/dominance_plan.csv")
 
 county_summary <- df_out %>%
   filter(!is.na(dominated)) %>%
-  group_by(fips, year, state, county_name) %>%
+  group_by(county_fips, year, state, county_name) %>%
   summarize(
     n_plans = n(),
     n_dominated = sum(dominated),
