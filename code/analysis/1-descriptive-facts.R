@@ -14,8 +14,14 @@
 # Read data
 # ---------------------------------------------------------------------------
 
-plan_df <- read_csv("data/output/dominance_plan.csv", show_col_types = FALSE)
-county_df <- read_csv("data/output/dominance_county.csv", show_col_types = FALSE)
+plan_df <- read_csv(
+  "data/output/dominance_plan.csv", show_col_types = FALSE,
+  col_types = cols(county_fips = col_character(), .default = col_guess())
+)
+county_df <- read_csv(
+  "data/output/dominance_county.csv", show_col_types = FALSE,
+  col_types = cols(county_fips = col_character(), .default = col_guess())
+)
 
 # Focus on plans with dominance classification
 plan_df <- plan_df %>%
@@ -33,7 +39,7 @@ message("\n========== 1. Market Structure ==========")
 
 # Plans per county-year
 market_structure <- plan_df %>%
-  group_by(fips, year, state, county_name) %>%
+  group_by(county_fips, year, state, county_name) %>%
   summarize(
     n_plans = n(),
     n_hmo = sum(plan_category == "HMO"),
