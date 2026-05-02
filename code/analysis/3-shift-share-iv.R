@@ -43,7 +43,7 @@ panel <- read_csv(
     log_inc     = log(median_hh_income)
   )
 
-stopifnot(all(c("bartik_pffs", "bartik_total") %in% names(panel)))
+stopifnot(all(c("bartik_pffs", "bartik_total", "bartik_insurer") %in% names(panel)))
 
 message("Analysis panel: ", nrow(panel), " county-years (",
         min(panel$year), "-", max(panel$year), ")")
@@ -64,6 +64,12 @@ fs_total <- feols(
   data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
 )
 
+fs_ins <- feols(
+  as.formula(paste("log_n_plans ~ bartik_insurer +", ctrl_rhs,
+                   "| state + year")),
+  data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
+)
+
 # ---------------------------------------------------------------------------
 # Reduced form — outcome on bartik
 # ---------------------------------------------------------------------------
@@ -76,6 +82,12 @@ rf_pffs <- feols(
 
 rf_total <- feols(
   as.formula(paste("pct_enrollment_dominated ~ bartik_total +", ctrl_rhs,
+                   "| state + year")),
+  data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
+)
+
+rf_ins <- feols(
+  as.formula(paste("pct_enrollment_dominated ~ bartik_insurer +", ctrl_rhs,
                    "| state + year")),
   data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
 )
@@ -96,23 +108,29 @@ iv_total <- feols(
   data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
 )
 
+iv_ins <- feols(
+  as.formula(paste("pct_enrollment_dominated ~", ctrl_rhs,
+                   "| state + year | log_n_plans ~ bartik_insurer")),
+  data = panel, weights = ~ total_enrollment, cluster = ~ county_fips
+)
+
 # ---------------------------------------------------------------------------
 # Print to console
 # ---------------------------------------------------------------------------
 
 cat("\n========== FIRST STAGE: log(n_plans) on Bartik ==========\n")
-walk2(list(fs_pffs, fs_total),
-      c("PFFS-only Bartik", "Sum-of-types Bartik"),
+walk2(list(fs_pffs, fs_total, fs_ins),
+      c("PFFS-only", "Sum-of-types", "Insurer-level"),
       ~ { cat("\n--- ", .y, " ---\n", sep = ""); print(summary(.x)) })
 
 cat("\n========== REDUCED FORM: outcome on Bartik ==========\n")
-walk2(list(rf_pffs, rf_total),
-      c("PFFS-only Bartik", "Sum-of-types Bartik"),
+walk2(list(rf_pffs, rf_total, rf_ins),
+      c("PFFS-only", "Sum-of-types", "Insurer-level"),
       ~ { cat("\n--- ", .y, " ---\n", sep = ""); print(summary(.x)) })
 
 cat("\n========== 2SLS ==========\n")
-walk2(list(iv_pffs, iv_total),
-      c("PFFS-only Bartik", "Sum-of-types Bartik"),
+walk2(list(iv_pffs, iv_total, iv_ins),
+      c("PFFS-only", "Sum-of-types", "Insurer-level"),
       ~ { cat("\n--- ", .y, " ---\n", sep = ""); print(summary(.x)) })
 
 # ---------------------------------------------------------------------------
@@ -122,10 +140,13 @@ walk2(list(iv_pffs, iv_total),
 models <- list(
   "FS: PFFS"       = fs_pffs,
   "FS: Total"      = fs_total,
+  "FS: Insurer"    = fs_ins,
   "RF: PFFS"       = rf_pffs,
   "RF: Total"      = rf_total,
+  "RF: Insurer"    = rf_ins,
   "2SLS: PFFS"     = iv_pffs,
-  "2SLS: Total"    = iv_total
+  "2SLS: Total"    = iv_total,
+  "2SLS: Insurer"  = iv_ins
 )
 
 coef_labels <- c(
@@ -133,6 +154,7 @@ coef_labels <- c(
   "log_n_plans"     = "log(n plans)",
   "bartik_pffs"     = "Bartik (PFFS-only)",
   "bartik_total"    = "Bartik (sum of types)",
+  "bartik_insurer"  = "Bartik (insurer-level)",
   "log_inc"         = "log(median HH income)",
   "pct_65plus"      = "% age 65+",
   "pct_bachelors_p" = "% bachelor's or higher",

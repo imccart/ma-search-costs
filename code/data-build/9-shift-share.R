@@ -108,6 +108,60 @@ shift <- base_shares %>%
 
 message("\nShift-share panel: ", nrow(shift), " county-years")
 
+# ---------------------------------------------------------------------------
+# Insurer-level (parent_org) shift-share — generalization of plan-type version
+# ---------------------------------------------------------------------------
+#
+# Bartik:  z^I_{c,t} = sum_j  s_{c,j,2008}  *  (national_j,t / national_j,2008 - 1)
+#
+# Level shocks (rather than log) because individual parent firms can exit
+# entirely (n_t = 0 → log undefined), whereas plan TYPES never go to zero in
+# the panel. Level form bounded below by -1 (full exit) and unbounded above.
+
+ins_cy <- enr %>%
+  filter(!is.na(parent_org)) %>%
+  count(county_fips, year, parent_org, name = "n_plans_j")
+
+# Baseline 2008 county shares by parent
+ins_share2008 <- ins_cy %>%
+  filter(year == 2008) %>%
+  group_by(county_fips) %>%
+  mutate(total_2008 = sum(n_plans_j),
+         share2008  = if_else(total_2008 > 0, n_plans_j / total_2008, 0)) %>%
+  ungroup() %>%
+  select(county_fips, parent_org, share2008)
+
+# National parent x year plan counts; growth as level change vs 2008
+ins_natl <- ins_cy %>%
+  group_by(parent_org, year) %>%
+  summarise(natl_n = sum(n_plans_j), .groups = "drop") %>%
+  group_by(parent_org) %>%
+  mutate(
+    natl_2008 = sum(natl_n * (year == 2008)),
+    g_level   = if_else(natl_2008 > 0, natl_n / natl_2008 - 1, NA_real_)
+  ) %>%
+  ungroup() %>%
+  filter(!is.na(g_level)) %>%
+  select(parent_org, year, g_level)
+
+bartik_ins <- ins_share2008 %>%
+  inner_join(ins_natl, by = "parent_org",
+             relationship = "many-to-many") %>%
+  mutate(z_j = share2008 * g_level) %>%
+  group_by(county_fips, year) %>%
+  summarise(bartik_insurer = sum(z_j), .groups = "drop")
+
+message("\nbartik_insurer summary by year:")
+bartik_ins %>%
+  group_by(year) %>%
+  summarise(mean_b = round(mean(bartik_insurer), 3),
+            min_b  = round(min(bartik_insurer), 3),
+            max_b  = round(max(bartik_insurer), 3),
+            sd_b   = round(sd(bartik_insurer), 3)) %>%
+  print(n = Inf)
+
+shift <- shift %>% left_join(bartik_ins, by = c("county_fips", "year"))
+
 message("\nbartik_pffs distribution by year (high-share counties get more")
 message("negative bartik_pffs as PFFS contracts nationally):")
 shift %>%
@@ -130,8 +184,8 @@ if (file.exists("data/output/analysis_panel.csv")) {
     col_types = cols(county_fips = col_character(), .default = col_guess())
   ) %>%
     select(-any_of(c("bartik_pffs", "bartik_hmo", "bartik_ppo",
-                     "bartik_total", "pffs_share2008", "hmo_share2008",
-                     "ppo_share2008")))
+                     "bartik_total", "bartik_insurer",
+                     "pffs_share2008", "hmo_share2008", "ppo_share2008")))
 
   ap_aug <- ap %>%
     left_join(shift, by = c("county_fips", "year"))
