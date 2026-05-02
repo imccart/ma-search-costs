@@ -3,7 +3,8 @@
 # Joins the dominance summary (dominance_county.csv) with ACS demographics
 # (acs_county.csv) and the product-differentiation cluster measure
 # (cluster_county.csv) on (county_fips, year). 2008 is dropped explicitly
-# because ACS 5-year endyears begin at 2009.
+# because ACS 5-year endyears begin at 2009. Policy-shock columns are added
+# in 8-policy-shocks.R, which augments analysis_panel.csv.
 #
 # Input:  data/output/dominance_county.csv
 #         data/output/cluster_county.csv
