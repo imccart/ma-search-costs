@@ -11,9 +11,17 @@
 # choice complexity. Approach mirrors the prototype in
 # research-projects/_future-ideas/ma-product-differentiation/analysis/.
 #
+# We compute agg_val twice per county-year:
+#   - agg_val: clustering on year-t's full CMS measure roster
+#   - agg_val_stable: clustering on the intersection of year-t and year-(t-1)
+#                     rosters (measures present in both years)
+# The difference (agg_val - agg_val_stable) isolates the methodology-driven
+# shift in measured differentiation: if year-t added a high-variance measure,
+# differentiation goes up mechanically without underlying quality change.
+#
 # Input:  data/input/ma-repo/ma_data_YYYY.txt (raw MA repo files, 2008–2018)
 #         code/data-build/_rating-variables.R (year-specific component lists)
-# Output: data/output/cluster_county.csv (county-year, with agg_val)
+# Output: data/output/cluster_county.csv (county-year, agg_val + agg_val_stable)
 
 source("code/data-build/_rating-variables.R")
 
@@ -47,6 +55,20 @@ cluster_county_year <- function(plans, vars) {
 # Process one year
 # ---------------------------------------------------------------------------
 
+cluster_with_vars <- function(ma_df, vars) {
+  # Helper: run cluster_county_year over each county_fips in ma_df using `vars`
+  # as the feature set. Returns (county_fips, n_plans, agg_val).
+  ma_df %>%
+    select(county_fips, all_of(vars)) %>%
+    nest(.by = county_fips) %>%
+    mutate(
+      result  = map(data, ~ cluster_county_year(.x, vars)),
+      n_plans = map_int(result, "n_plans"),
+      agg_val = map_dbl(result, "agg_val")
+    ) %>%
+    select(county_fips, n_plans, agg_val)
+}
+
 cluster_year <- function(yr) {
   message("Clustering ", yr)
 
@@ -56,7 +78,8 @@ cluster_year <- function(yr) {
     return(NULL)
   }
 
-  raw_vars <- rating_vars[[as.character(yr)]]
+  raw_vars      <- rating_vars[[as.character(yr)]]
+  raw_vars_prev <- rating_vars[[as.character(yr - 1)]]   # NULL if yr == 2008
   if (is.null(raw_vars)) {
     message("  No rating-var list defined for ", yr, " — skipping")
     return(NULL)
@@ -72,24 +95,39 @@ cluster_year <- function(yr) {
     ) %>%
     mutate(county_fips = str_pad(fips, 5, side = "left", pad = "0"))
 
-  available_vars <- intersect(raw_vars, names(ma))
-  message("  Rating vars available: ", length(available_vars), "/",
-          length(raw_vars))
+  available_full   <- intersect(raw_vars, names(ma))
+  available_stable <- if (!is.null(raw_vars_prev)) {
+    intersect(intersect(raw_vars, raw_vars_prev), names(ma))
+  } else {
+    character(0)
+  }
 
-  out <- ma %>%
-    select(county_fips, all_of(available_vars)) %>%
-    nest(.by = county_fips) %>%
-    mutate(
-      result        = map(data, ~ cluster_county_year(.x, available_vars)),
-      n_plans_clust = map_int(result, "n_plans"),
-      agg_val       = map_dbl(result, "agg_val"),
-      year          = as.integer(yr)
-    ) %>%
-    select(county_fips, year, n_plans_clust, agg_val)
+  message("  Rating vars: full=", length(available_full),
+          "; stable (∩ prior year)=", length(available_stable))
+
+  out_full <- cluster_with_vars(ma, available_full) %>%
+    rename(n_plans_clust = n_plans)
+
+  if (length(available_stable) >= 2) {
+    out_stable <- cluster_with_vars(ma, available_stable) %>%
+      rename(n_plans_stable = n_plans, agg_val_stable = agg_val)
+    out <- left_join(out_full, out_stable, by = "county_fips")
+  } else {
+    out <- out_full %>%
+      mutate(n_plans_stable = NA_integer_, agg_val_stable = NA_real_)
+  }
+
+  out <- out %>%
+    mutate(year = as.integer(yr)) %>%
+    select(county_fips, year, n_plans_clust, agg_val,
+           n_plans_stable, agg_val_stable)
 
   message("  Counties: ", nrow(out),
-          "; clustered: ", sum(!is.na(out$agg_val)),
-          "; mean agg_val: ", round(mean(out$agg_val, na.rm = TRUE), 3))
+          "; clustered (full): ", sum(!is.na(out$agg_val)),
+          "; clustered (stable): ", sum(!is.na(out$agg_val_stable)),
+          "; mean agg_val: ", round(mean(out$agg_val, na.rm = TRUE), 3),
+          "; mean agg_val_stable: ",
+          round(mean(out$agg_val_stable, na.rm = TRUE), 3))
 
   out
 }
@@ -105,14 +143,16 @@ message("\n========== Cluster panel ==========")
 message("County-years: ", nrow(cluster_county),
         " (", sum(!is.na(cluster_county$agg_val)), " with agg_val)")
 
-message("\nagg_val by year:")
+message("\nagg_val (full) and agg_val_stable by year:")
 cluster_county %>%
   group_by(year) %>%
   summarise(
-    n          = n(),
-    n_clust    = sum(!is.na(agg_val)),
-    mean_agg   = round(mean(agg_val, na.rm = TRUE), 3),
-    median_agg = round(median(agg_val, na.rm = TRUE), 3)
+    n            = n(),
+    n_full       = sum(!is.na(agg_val)),
+    n_stable     = sum(!is.na(agg_val_stable)),
+    mean_full    = round(mean(agg_val,        na.rm = TRUE), 3),
+    mean_stable  = round(mean(agg_val_stable, na.rm = TRUE), 3),
+    mean_shift   = round(mean(agg_val - agg_val_stable, na.rm = TRUE), 3)
   ) %>%
   print(n = Inf)
 
