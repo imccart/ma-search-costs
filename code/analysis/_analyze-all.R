@@ -5,4 +5,5 @@ pacman::p_load(tidyverse, modelsummary, kableExtra, fixest, broom)
 
 source("code/analysis/1-descriptive-facts.R")
 source("code/analysis/2-reduced-form.R")
+source("code/analysis/3-shift-share-iv.R")
 source("code/analysis/export-paper-numbers.R")
