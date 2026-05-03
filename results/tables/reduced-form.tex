@@ -1,0 +1,42 @@
+\begin{table}
+\centering
+\begin{talltblr}[         %% tabularray outer open
+entry=none,label=none,
+note{}={* p \num{< 0.1}, ** p \num{< 0.05}, *** p \num{< 0.01}},
+note{ }={Enrollment-weighted OLS. Standard errors clustered at the county level. State and year fixed effects in all specifications.},
+]                     %% tabularray outer close
+{                     %% tabularray inner open
+colspec={Q[]Q[]Q[]Q[]Q[]},
+hline{2}={1-5}{solid, black, 0.05em},
+hline{20}={1-5}{solid, black, 0.05em},
+hline{1}={1-5}{solid, black, 0.08em},
+hline{25}={1-5}{solid, black, 0.08em},
+column{2-5}={}{halign=c},
+column{1}={}{halign=l},
+}                     %% tabularray inner close
+& (1) Headline & (2) + Differentiation & (3) Supply-side (\% plans) & (4) n\_plans bins \\
+log(n plans) & 19.400*** & 27.756*** & 20.561*** &  \\
+& (1.280) & (3.010) & (0.817) &  \\
+Agg. coefficient (differentiation) &  & 44.136*** &  &  \\
+&  & (8.974) &  &  \\
+log(n plans) x agg\_val &  & -13.847*** &  &  \\
+&  & (3.261) &  &  \\
+n plans: middle tercile &  &  &  & 13.575*** \\
+&  &  &  & (1.422) \\
+n plans: high tercile &  &  &  & 33.512*** \\
+&  &  &  & (1.903) \\
+log(median HH income) & 11.031*** & 10.512** & 6.084*** & 11.396*** \\
+& (3.760) & (4.188) & (2.204) & (3.494) \\
+\% age 65+ & 0.125 & 0.194 & -0.100 & 0.125 \\
+& (0.201) & (0.230) & (0.078) & (0.186) \\
+\% bachelor's or higher & 0.055 & 0.031 & -0.040 & -0.084 \\
+& (0.081) & (0.096) & (0.047) & (0.080) \\
+log(population) & 1.969* & 2.335 & 0.779* & 5.399*** \\
+& (1.079) & (1.434) & (0.425) & (0.856) \\
+Num.Obs. & 28837 & 8509 & 28837 & 28837 \\
+R2 & 0.456 & 0.406 & 0.731 & 0.452 \\
+R2 Adj. & 0.455 & 0.402 & 0.730 & 0.450 \\
+FE: state & X & X & X & X \\
+FE: year & X & X & X & X \\
+\end{talltblr}
+\end{table}

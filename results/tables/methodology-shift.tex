@@ -1,0 +1,40 @@
+\begin{table}
+\centering
+\begin{talltblr}[         %% tabularray outer open
+entry=none,label=none,
+note{}={* p \num{< 0.1}, ** p \num{< 0.05}, *** p \num{< 0.01}},
+note{ }={Enrollment-weighted OLS. SEs clustered at county. State and year FE. Sample restricted to county-years with non-missing agg\_val and agg\_val\_stable.},
+]                     %% tabularray outer close
+{                     %% tabularray inner open
+colspec={Q[]Q[]Q[]Q[]},
+hline{2}={1-4}{solid, black, 0.05em},
+hline{18}={1-4}{solid, black, 0.05em},
+hline{1}={1-4}{solid, black, 0.08em},
+hline{23}={1-4}{solid, black, 0.08em},
+column{2-4}={}{halign=c},
+column{1}={}{halign=l},
+}                     %% tabularray inner close
+& Full agg\_val & Stable agg\_val & Decomposition \\
+log(n plans) & 16.321*** & 16.723*** & 16.394*** \\
+& (1.712) & (1.628) & (1.707) \\
+Differentiation (full roster) & 8.354*** &  &  \\
+& (2.128) &  &  \\
+Differentiation (stable roster) &  & 4.012** & 6.132*** \\
+&  & (2.028) & (2.361) \\
+Methodology shift &  &  & 17.133*** \\
+&  &  & (3.547) \\
+log(median HH income) & 10.772** & 10.903*** & 10.832** \\
+& (4.231) & (4.165) & (4.232) \\
+\% age 65+ & 0.190 & 0.210 & 0.191 \\
+& (0.234) & (0.231) & (0.234) \\
+\% bachelor's or higher & 0.057 & 0.052 & 0.056 \\
+& (0.097) & (0.095) & (0.097) \\
+log(population) & 2.011 & 2.387* & 2.056 \\
+& (1.475) & (1.397) & (1.482) \\
+Num.Obs. & 8509 & 10939 & 8509 \\
+R2 & 0.402 & 0.421 & 0.403 \\
+R2 Adj. & 0.397 & 0.417 & 0.399 \\
+FE: state & X & X & X \\
+FE: year & X & X & X \\
+\end{talltblr}
+\end{table}

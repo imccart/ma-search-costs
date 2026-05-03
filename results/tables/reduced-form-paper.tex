@@ -1,0 +1,40 @@
+\begin{table}
+\centering
+\begin{talltblr}[         %% tabularray outer open
+entry=none,label=none,
+note{}={* p \num{< 0.1}, ** p \num{< 0.05}, *** p \num{< 0.01}},
+note{ }={Enrollment-weighted. Standard errors clustered at the county level. State and year fixed effects in all specifications. Columns (3) and (4) instrument log(n plans) using shift-share Bartik instruments built from 2008 county-level plan-type and parent-insurer shares interacted with national plan-count growth.},
+]                     %% tabularray outer close
+{                     %% tabularray inner open
+colspec={Q[]Q[]Q[]Q[]Q[]Q[]},
+hline{2}={1-6}{solid, black, 0.05em},
+hline{18}={1-6}{solid, black, 0.05em},
+hline{1}={1-6}{solid, black, 0.08em},
+hline{23}={1-6}{solid, black, 0.08em},
+column{2-6}={}{halign=c},
+column{1}={}{halign=l},
+}                     %% tabularray inner close
+& (1) OLS & (2) OLS + agg\_val & (3) 2SLS (PFFS Bartik) & (4) 2SLS (insurer Bartik) & (5) Decomposition \\
+log(n plans) & 19.400*** & 16.321*** & 26.612*** & 22.442*** & 16.394*** \\
+& (1.280) & (1.712) & (7.797) & (8.590) & (1.707) \\
+Differentiation (full) &  & 8.354*** &  &  &  \\
+&  & (2.128) &  &  &  \\
+Differentiation (stable) &  &  &  &  & 6.132*** \\
+&  &  &  &  & (2.361) \\
+Methodology shift &  &  &  &  & 17.133*** \\
+&  &  &  &  & (3.547) \\
+log(median HH income) & 11.031*** & 10.772** & 8.556* & 9.987* & 10.832** \\
+& (3.760) & (4.231) & (5.079) & (5.356) & (4.232) \\
+\% age 65+ & 0.125 & 0.190 & 0.090 & 0.110 & 0.191 \\
+& (0.201) & (0.234) & (0.229) & (0.217) & (0.234) \\
+\% bachelor's or higher & 0.055 & 0.057 & 0.135 & 0.089 & 0.056 \\
+& (0.081) & (0.097) & (0.126) & (0.110) & (0.097) \\
+log(population) & 1.969* & 2.011 & -0.522 & 0.918 & 2.056 \\
+& (1.079) & (1.475) & (2.996) & (2.898) & (1.482) \\
+Num.Obs. & 28837 & 8509 & 28837 & 28837 & 8509 \\
+R2 & 0.456 & 0.402 & 1.000 & 1.000 & 0.403 \\
+R2 Adj. & 0.455 & 0.397 & 1.000 & 1.000 & 0.399 \\
+FE: state & X & X & X & X & X \\
+FE: year & X & X & X & X & X \\
+\end{talltblr}
+\end{table}

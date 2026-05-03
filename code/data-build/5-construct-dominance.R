@@ -12,84 +12,15 @@
 # See background/utilization/utilization-notes.md for sources and validation.
 #
 # Input:  data/output/plan_county_benefits.csv (from script 3)
+#         code/data-build/_utilization-profiles.R (shared profiles + weights)
 # Output: data/output/dominance_plan.csv     (plan-county-year with dominated flag)
 #         data/output/dominance_county.csv    (county-year summary)
 
 # ---------------------------------------------------------------------------
-# Utilization profiles
+# Utilization profiles (shared with FFS outside-option build)
 # ---------------------------------------------------------------------------
 
-# Each profile is a named list of service counts per year.
-# Sources: CMS/RAND MA Encounter Data Report (2019), Table 3.1;
-#          Ganguli et al. (2021) for PCP/specialist split;
-#          MedPAC Data Book (2024) for spending validation.
-#
-# Per-event costs (for validation only, not used in dominance):
-#   PCP visit ~$200, specialist ~$350, outpatient ~$2,000,
-#   ER ~$1,500, inpatient ~$15,000
-
-profiles <- list(
-  # Profile 1: No utilization — premium only
-  list(name = "none",       pcp = 0, spec = 0, op = 0, er = 0, ip = 0, implied_spend = 0),
-  # Profile 2: Minimal — 2 PCP visits (~$400)
-  list(name = "minimal",    pcp = 2, spec = 0, op = 0, er = 0, ip = 0, implied_spend = 400),
-  # Profile 3: Low/healthy — 3 PCP + 1 specialist (~$950)
-  list(name = "low",        pcp = 3, spec = 1, op = 0, er = 0, ip = 0, implied_spend = 950),
-  # Profile 4: Below average — adds outpatient visit (~$2,700)
-  list(name = "below_avg",  pcp = 3, spec = 2, op = 1, er = 0, ip = 0, implied_spend = 2700),
-  # Profile 5: Average — near MA mean utilization (~$9,600)
-  list(name = "average",    pcp = 3, spec = 5, op = 3, er = 1, ip = 0, implied_spend = 9850),
-  # Profile 6: Above average — more specialist + ER (~$11,350)
-  list(name = "above_avg",  pcp = 3, spec = 5, op = 4, er = 1, ip = 0, implied_spend = 11850),
-  # Profile 7: High — includes inpatient stay (~$26,850)
-  list(name = "high",       pcp = 3, spec = 5, op = 4, er = 1, ip = 1, implied_spend = 26850),
-  # Profile 8: Very high — 2 inpatient stays (~$41,850)
-  list(name = "very_high",  pcp = 3, spec = 7, op = 5, er = 2, ip = 2, implied_spend = 44300)
-  # Profile 9 (MOOP) is handled separately — cost = 12*premium + MOOP exactly
-)
-
-n_profiles <- length(profiles) + 1  # +1 for MOOP profile
-
-# Probability weights over profiles.
-# Based on MedPAC 2024 health status distribution:
-#   50.2% excellent/very good health → profiles 1-4
-#   45.1% good/fair health → profiles 5-6
-#   4.7% poor health → profiles 7-9 (including MOOP)
-#
-# Within each group, weights are spread roughly evenly.
-profile_weights <- c(
-  0.10,   # none (some beneficiaries use almost nothing)
-  0.15,   # minimal
-  0.15,   # low/healthy
-  0.10,   # below average
-  0.22,   # average (largest single group)
-  0.13,   # above average (not uncommon, some chronic conditions)
-  0.08,   # high (inpatient stay — ~14% have any admission)
-  0.04,   # very high (multiple admissions)
-  0.03    # at MOOP (catastrophic)
-)
-# Weights sum to 1
-stopifnot(abs(sum(profile_weights) - 1) < 1e-10)
-
-
-# ---------------------------------------------------------------------------
-# Cost computation
-# ---------------------------------------------------------------------------
-
-# Typical Medicare allowed charges by service type.
-# Used to convert coinsurance percentages to dollar amounts.
-# Sources: MedPAC, CMS Medicare Provider Utilization data.
-allowed_charges <- list(
-  pcp  = 200,    # E&M office visit (99213/99214)
-  spec = 350,    # specialist E&M + minor procedures
-  op   = 2000,   # outpatient hospital (facility + professional)
-  er   = 1500,   # emergency department visit
-  ip   = 15000   # inpatient stay (average DRG payment)
-)
-
-# Average Medicare inpatient length of stay (~5.4 days).
-# Inpatient copays in PBP are typically per-day, not per-stay.
-avg_ip_los <- 5
+source("code/data-build/_utilization-profiles.R")
 
 #' Compute per-event enrollee cost for a service
 #'
