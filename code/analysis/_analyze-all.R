@@ -1,11 +1,8 @@
-# _analyze-all.R — Master analysis script
+# _analyze-all.R — Full analysis (RF + structural)
 # Run from project root: source("code/analysis/_analyze-all.R")
+#
+# Use _analyze-rf.R or _analyze-structural.R for targeted runs; this driver
+# is the one-stop reproduce-from-scratch entry point.
 
-pacman::p_load(tidyverse, modelsummary, kableExtra, fixest, broom)
-
-source("code/analysis/1-descriptive-facts.R")
-source("code/analysis/2-reduced-form.R")
-source("code/analysis/3-shift-share-iv.R")
-source("code/analysis/4-methodology-shift.R")
-source("code/analysis/5-paper-table.R")
-source("code/analysis/export-paper-numbers.R")
+source("code/analysis/_analyze-rf.R")
+source("code/analysis/_analyze-structural.R")

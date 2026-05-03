@@ -1,4 +1,4 @@
-# 12-assemble-structural-panel.R — Plan-attributes panel for the structural model
+# 13-assemble-structural-panel.R — Plan-attributes panel for the structural model
 #
 # Produces the county x plan x year panel that the Stigler-search structural
 # model consumes. Two kinds of rows:
