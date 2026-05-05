@@ -1,9 +1,21 @@
 /* ------------------------------------------------------------ */
-/* TITLE:        VRDC data-build master driver                   */
+/* TITLE:        VRDC data-build master driver (optional)        */
 /* PROJECT:      ma-search-costs                                 */
 /* PURPOSE:      Run the full extraction pipeline end-to-end.    */
 /* ------------------------------------------------------------ */
-/* Sourced from /workspace/pl027710/code/data-build/vrdc/.       */
+/* This driver is OPTIONAL. The recommended SAS Enterprise Guide */
+/* workflow is to open and run each script individually in       */
+/* order: _config.sas first, then 1, 2, 3, 4. Each numbered      */
+/* script is standalone and references libraries directly        */
+/* (PL027710, MBSF, MCBS<yr>, MCBSXWLK) — no relative paths or   */
+/* %INCLUDE chains.                                              */
+/*                                                                */
+/* Use this driver only if you want a single batch run via       */
+/* `sas -SYSIN _build-vrdc.sas` or equivalent. Edit the          */
+/* `code_dir` macro below to match the filesystem location       */
+/* where you placed the .sas scripts on the seat (NOT the        */
+/* PL027710 library — code and library can live in different     */
+/* directories).                                                  */
 /*                                                                */
 /* Pipeline:                                                      */
 /*   1. _config.sas              libnames, year ranges, macros   */
@@ -13,7 +25,10 @@
 /*   5. 4-export-bene-panel.sas  CSV for R analysis              */
 /* ------------------------------------------------------------ */
 
-%LET project_root = /workspace/pl027710/code/data-build/vrdc;
+/* Edit this to match where you placed the .sas files on the seat.   */
+/* This is the filesystem path to the code directory, NOT the SAS    */
+/* library PL027710 (which is auto-mounted and lives elsewhere).     */
+%LET project_root = /your/seat/path/to/scripts;
 
 %INCLUDE "&project_root/_config.sas";
 

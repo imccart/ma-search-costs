@@ -23,7 +23,6 @@ The bene × plan panel is materialized as a checkpoint so (a) restarts after a c
 
 - `/workspace/pl027710/export/bene_panel.csv` — produced by data-build (SAS)
 - `/workspace/pl027710/upload/structural_panel.csv` — uploaded from local (with prominence columns from `code/data-build/14-build-prominence-vars.R`)
-- `/workspace/pl027710/upload/analysis_panel.csv` — uploaded from local
 
 ## Checkpoint
 
@@ -56,6 +55,15 @@ Hyperparameter `LAMBDA` (in `4-aggregate-moments.R`) governs the relative weight
 
 Optimizer: `nloptr::nloptr` with `NLOPT_LN_SBPLX` (gradient-free; bounds-respecting). SLSQP would be faster but needs analytical gradients of the simulator — see `background/progress-and-next-steps.md` for that as a future unlock.
 
+## Model spec
+
+Three-stage Plan-Finder-anchored ordered search; full spec in `agents/model.md`. 21 free parameters:
+- Utility (4): alpha, delta, beta, xi_FFS
+- Search-cost heterogeneity (9): gamma_0, gamma_inc, gamma_educ, gamma_age, gamma_dual, gamma_adi, gamma_net (KVSITWEB), gamma_help (KCHIHELP=2), gamma_delegate (KCHIHELP=3)
+- Awareness/prominence (8): lambda_PF_0, lambda_PF_online, lambda_PF_help, lambda_PF_delegate, lambda_broker_0, lambda_broker_help, lambda_broker_delegate, lambda_inc
+
+`KCHIHELP=2` ("gets help") and `KCHIHELP=3` ("someone else decides") are entered as separate dummies, per the §1 mitigation in `agents/limitations.md`. Pooled-KCHIHELP estimation is a robustness check, not the baseline.
+
 Standard errors: bootstrap clustered at `state_cnty_fips` (deferred). Or sandwich SEs from the Hessian × outer-product-of-gradient at theta_hat.
 
 ## Sample restrictions (already applied in script 1)
@@ -68,6 +76,6 @@ After all filters, the analysis sample N depends on coverage rates; expect ~30K�
 
 ## Variable provenance
 
-- All MCBS variable names are verified against the 2023 MCBS Survey File codebooks (`~/Downloads/mcbs-survey-file-extracted/Codebooks/{demo,hisumry,myenroll,maplanqx,mcreplnq,genhlth,cenwgts}_2023.txt`).
-- The 2015–2018 schema matches the 2023 codebook per the CMS user guide; if a variable is missing in earlier years (e.g., COVID items first appeared in 2020), the `2-extract-mcbs.sas` script will need a year-conditional pull. Sanity-check via `PROC CONTENTS` on the first run.
-- MBSF variable names are verified against ResDAC documentation.
+- All MCBS variable names verified against the year-specific 2015/2016/2017/2018 LDS codebooks (archived in `background/codebooks/`). Several variables were renamed mid-decade (`H_URBRUR`→`H_CBSA`, `ADI`→`CENSADI`→`ADINATNL`, `CS1YRWGT`→`CEYRSWGT`); the year-conditional macro logic in `2-extract-mcbs.sas` resolves these. Full mapping in `agents/data.md`.
+- MBSF variable names verified against ResDAC documentation.
+- For the post-2018 redesign items (CMPRPLN, RVWCOST, INTERNET, MAMONPRM, MYENROLL segment, etc.), see `agents/data.md` "What's post-2018 only."

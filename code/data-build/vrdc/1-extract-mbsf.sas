@@ -39,13 +39,16 @@
             BENE_RACE_CD                     AS race_cd,
             ZIP_CD                           AS zip_cd,
 
-            /* Geography. STATE_CD + COUNTY_CD are SSA-coded annual */
-            /* residence as of 12/31. STATE_CNTY_FIPS_CD_<MM> are   */
-            /* monthly FIPS codes (the actual FIPS our public      */
-            /* structural_panel.csv joins on). Use the December    */
-            /* monthly value as the annual FIPS; pull a few other  */
-            /* months to flag within-year moves.                   */
-            STATE_CD                         AS state_cd_ssa,
+            /* Geography. STATE_CODE + COUNTY_CD are SSA-coded     */
+            /* annual residence as of 12/31. (NB: codebook docs    */
+            /* show STATE_CD but the actual seat field name is     */
+            /* STATE_CODE — verified on seat 2026-05-05.)          */
+            /* STATE_CNTY_FIPS_CD_<MM> are monthly FIPS codes (the */
+            /* actual FIPS our public structural_panel.csv joins   */
+            /* on). Use the December monthly value as the annual   */
+            /* FIPS; pull a few other months to flag within-year   */
+            /* moves.                                              */
+            STATE_CODE                       AS state_cd_ssa,
             COUNTY_CD                        AS county_cd_ssa,
             STATE_CNTY_FIPS_CD_12            AS state_cnty_fips,
             STATE_CNTY_FIPS_CD_01            AS state_cnty_fips_jan,

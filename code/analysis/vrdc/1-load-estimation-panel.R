@@ -33,21 +33,23 @@ bene_cols <- c(
   "education_cat", "educ_yrs", "educ_yrs_dm", "has_bach",
   "is_dual", "is_partial_dual",
   "has_inet", "has_pc",
-  "KVSITWEB_use", "KCHIHELP_use",
+  "KVSITWEB_use", "KCHIHELP_help", "KCHIHELP_delegate",
   "searched_obs",
   "adi_dm",
   "is_ma_admin", "is_ffs_admin",
-  "incumbent_bene",
+  "prior_plan_id",
   "wgt_full_sample", "variance_stratum", "variance_psu"
 )
 
 # `incumbent_bene` is bene×plan in bcp; collapse to bene-year as
-# "was bene incumbent in any plan this year (i.e., MA-incumbent vs. new)"
+# "was bene incumbent in any plan this year (MA-incumbent vs. new enrollee)".
+# This is used downstream as a moment input, NOT in the salience function
+# (which uses bene-specific prior_plan_id × plan_id matching at runtime).
 bene <- bcp[, .(
   incumbent_bene_year = max(incumbent_bene, na.rm = TRUE)
 ), by = .(BASE_ID, year)] %>%
   merge(
-    unique(bcp[, ..bene_cols][, incumbent_bene := NULL]),
+    unique(bcp[, ..bene_cols]),
     by = c("BASE_ID", "year")
   )
 
@@ -84,7 +86,8 @@ plan_cols <- c(
   "Star_Rating", "mean_cost", "var_cost", "sd_cost",
   "pf_rank_score", "parent_org_loo_national", "parent_org_loo_state",
   "plan_tenure_national", "plan_tenure_county",
-  "ins_brokers_estab", "ins_brokers_emp", "total_eligibles"
+  "ins_brokers_estab", "ins_brokers_emp", "total_eligibles",
+  "broker_density_per_k"
 )
 
 markets <- vector("list", nrow(market_keys))

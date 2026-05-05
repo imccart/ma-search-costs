@@ -58,4 +58,4 @@ If the project ever expands to legacy 2007–2013 era, the August 2026 DUA renew
 
 ## Dependencies / uploaded inputs
 
-The R analysis side (`code/analysis/vrdc/`) requires `structural_panel.csv` and `analysis_panel.csv` to be uploaded to the VRDC seat from local. See `background/vrdc-upload-bundle.md`.
+The R analysis side (`code/analysis/vrdc/`) requires `structural_panel.csv` (with prominence columns from script 14) to be uploaded from local. See `background/vrdc-upload-bundle.md`.

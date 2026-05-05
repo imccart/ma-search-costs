@@ -81,8 +81,9 @@ bene <- bene %>%
     has_inet = as.integer(uses_internet_for_info == 1),
     has_pc   = as.integer(has_personal_computer == 1),
 
-    KVSITWEB_use = as.integer(visited_medicare_site == 1),
-    KCHIHELP_use = as.integer(who_decides_insurance %in% c(2L, 3L)),
+    KVSITWEB_use      = as.integer(visited_medicare_site == 1),
+    KCHIHELP_help     = as.integer(who_decides_insurance == 2L),
+    KCHIHELP_delegate = as.integer(who_decides_insurance == 3L),
 
     searched_obs = as.integer(searched == 1L | searched == TRUE),
 
@@ -143,7 +144,11 @@ message(sprintf("Plans per bene-year: median=%d, mean=%.1f, max=%d",
 
 bcp[, `:=`(
   is_chosen      = as.integer(plan_id == chosen_plan_id),
-  incumbent_bene = as.integer(plan_id == prior_plan_id & prior_plan_id != "")
+  incumbent_bene = as.integer(plan_id == prior_plan_id & prior_plan_id != ""),
+  # Broker density per 1k Medicare eligibles in the county-year. ins_brokers_estab
+  # (count) and total_eligibles join from structural_panel.csv at the county-year
+  # level; every plan-row in the same (county, year) carries the same values.
+  broker_density_per_k = ins_brokers_estab / pmax(total_eligibles, 1) * 1000
 )]
 
 # Sanity: every bene should have exactly one chosen plan in their market.
@@ -184,11 +189,20 @@ bcp[is_chosen == 1, .(pct_incumbent = mean(incumbent_bene)), by = year][order(ye
 
 message("\nKey covariate distributions among chosen plans:")
 print(bcp[is_chosen == 1, .(
-  pct_searched = mean(searched_obs == 1, na.rm = TRUE),
-  pct_kvsitweb = mean(KVSITWEB_use == 1, na.rm = TRUE),
-  pct_kchihelp = mean(KCHIHELP_use == 1, na.rm = TRUE),
-  pct_dual     = mean(is_dual == 1, na.rm = TRUE),
-  pct_bach     = mean(has_bach == 1, na.rm = TRUE)
+  pct_searched     = mean(searched_obs      == 1, na.rm = TRUE),
+  pct_kvsitweb     = mean(KVSITWEB_use      == 1, na.rm = TRUE),
+  pct_kchihelp_h   = mean(KCHIHELP_help     == 1, na.rm = TRUE),
+  pct_kchihelp_d   = mean(KCHIHELP_delegate == 1, na.rm = TRUE),
+  pct_dual         = mean(is_dual           == 1, na.rm = TRUE),
+  pct_bach         = mean(has_bach          == 1, na.rm = TRUE)
+)])
+
+message("\nBroker density per 1k eligibles (county-year level):")
+print(bcp[is_chosen == 1, .(
+  mean_density   = mean(broker_density_per_k, na.rm = TRUE),
+  median_density = median(broker_density_per_k, na.rm = TRUE),
+  p10            = quantile(broker_density_per_k, 0.10, na.rm = TRUE),
+  p90            = quantile(broker_density_per_k, 0.90, na.rm = TRUE)
 )])
 
 

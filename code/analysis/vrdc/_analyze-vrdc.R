@@ -7,7 +7,6 @@
 # Inputs (must already exist in the VRDC seat):
 #   /workspace/pl027710/export/bene_panel.csv         — from data-build
 #   /workspace/pl027710/upload/structural_panel.csv   — uploaded from local
-#   /workspace/pl027710/upload/analysis_panel.csv     — uploaded from local
 #
 # Outputs:
 #   /workspace/pl027710/export/bene_choice_panel.csv  — estimation checkpoint (script 0)

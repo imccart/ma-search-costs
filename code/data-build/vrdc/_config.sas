@@ -49,7 +49,17 @@
 
 
 /* ============================================================ */
-/* Output / export folder                                        */
+/* Staging folder for the CSV export from PROC EXPORT            */
+/* ------------------------------------------------------------ */
+/* This is a filesystem path inside the VRDC seat where SAS      */
+/* writes `bene_panel.csv` so the R analysis pipeline can read   */
+/* it. It is NOT the off-VRDC clearance-export route (that is    */
+/* manual via CMS protocol).                                     */
+/*                                                                */
+/* PL027710 is the SAS library, not a filesystem path. Code,     */
+/* CSV staging, and the SAS library can all live in different    */
+/* directories on the seat. Edit the path below to match the     */
+/* writable folder you want to stage the CSV in.                 */
 /* ============================================================ */
 %LET export_dir = /workspace/pl027710/export;
 
@@ -92,16 +102,16 @@
         /* Count months with any MA assignment */
         ma_months = 0;
         DO i = 1 TO 12;
-            IF cntrct[i] NOT IN ("", "0") THEN ma_months + 1;
+            IF cntrct[i] NOT IN ("", "0", "N") THEN ma_months + 1;
         END;
 
         /* Take December if non-blank, else first non-blank */
-        IF cntrct[12] NOT IN ("", "0") THEN DO;
+        IF cntrct[12] NOT IN ("", "0", "N") THEN DO;
             ann_contract = cntrct[12];
             ann_pbp      = pbp[12];
         END;
         ELSE DO i = 1 TO 12;
-            IF ann_contract = "" AND cntrct[i] NOT IN ("", "0") THEN DO;
+            IF ann_contract = "" AND cntrct[i] NOT IN ("", "0", "N") THEN DO;
                 ann_contract = cntrct[i];
                 ann_pbp      = pbp[i];
             END;

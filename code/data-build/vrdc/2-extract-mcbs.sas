@@ -59,7 +59,7 @@
     %LOCAL urbrur_var ruca_select adi_var weight_var;
     %IF &yr LE 2016 %THEN %DO;
         %LET urbrur_var  = H_URBRUR;
-        %LET ruca_select = . AS ruca,;            /* H_RUCA absent 2015-2016 */
+        %LET ruca_select = '' AS ruca,;           /* H_RUCA absent 2015-2016 — character empty to match H_RUCA's character type in 2017-2018 */
         %IF &yr = 2015 %THEN %LET adi_var = ADI;
                        %ELSE %LET adi_var = CENSADI;
         %LET weight_var  = CS1YRWGT;
@@ -174,6 +174,23 @@
         FROM MCBS&yr..SURVEY_HITLINE_&yr ;
     QUIT;
 
+    /* Note: PLANTYPE and S_OBTNP are both NUMERIC on the seat          */
+    /* (verified 2026-05-05). S_OBTNP includes a SAS special-missing    */
+    /* value .N (formatted as "N"), which is sorted before any regular  */
+    /* numeric and so is never matched by the institutional-channel    */
+    /* IN list — desired behavior (treat .N as no-channel, not          */
+    /* institutional).                                                  */
+    /*                                                                  */
+    /* MCBS HITLINE PLANTYPE codes (per CMS HITLINE codebook):          */
+    /*   1=Medicare A, 2=Medicare B, 3=Medicare C/MA, 4=Medicare D /    */
+    /*   Part D / MAPD, 5=Medicaid, 6=Other public, 20/21=ESI,          */
+    /*   30/31=Self-purchased, 40=VA, 50=Tricare, 60=RDS, 70=Other.     */
+    /* S_OBTNP ("how did you obtain this plan") is INAPPLICABLE for      */
+    /* Medicare A/B/C/D rows — those rows always have S_OBTNP = . , so   */
+    /* ma_obtained_directly and ma_obtained_inst computed below are     */
+    /* zero by construction. Kept as columns for diagnostic continuity   */
+    /* but not used in the active-shopper filter (which simplifies to   */
+    /* NOT inst_coverage given ma_obtained_inst = 0 always).             */
     PROC SQL;
         CREATE TABLE WORK.hitline_&yr AS
         SELECT
@@ -184,10 +201,9 @@
             MAX(PLANTYPE = 60)                              AS has_rds,
             MAX(PLANTYPE = 30 OR PLANTYPE = 31)             AS has_self_purch,
             MAX(PLANTYPE = 3)                               AS has_ma_row,
-            /* MA obtained directly: any MA row with S_OBTNP = '1' */
-            MAX(PLANTYPE = 3 AND S_OBTNP = "1")             AS ma_obtained_directly,
-            /* MA obtained via institution (employer / union / etc.) */
-            MAX(PLANTYPE = 3 AND S_OBTNP IN ("2","3","4","5","6","7","8","9","91"))
+            /* Always zero by construction — S_OBTNP inapplicable for MA */
+            MAX(PLANTYPE = 3 AND S_OBTNP = 1)               AS ma_obtained_directly,
+            MAX(PLANTYPE = 3 AND S_OBTNP IN (2,3,4,5,6,7,8,9,91))
                                                             AS ma_obtained_inst
         FROM WORK.hitline_raw_&yr
         GROUP BY BASE_ID ;
@@ -309,7 +325,9 @@
 /* MBSF Part A/B months and ESRD info via the bene-panel join.   */
 /* ============================================================ */
 
+%MACRO stack_mcbs;
 DATA PL027710.mcbs_panel;
+    LENGTH ruca $ 8;     /* force consistent length across stacked years */
     SET
     %DO yr = &mcbs_start %TO &mcbs_end;
         WORK.mcbs_&yr
@@ -319,11 +337,13 @@ DATA PL027710.mcbs_panel;
     /* ESRD-exclusion via Medicare status (10/20 = age, 11/21/31 = ESRD) */
     not_esrd = (medstatus IN ("10","20"));
 
-    /* Derived: ever-MA in the year (admin-source monthly flags) */
+    /* Derived: ever-MA in the year (admin-source monthly flags).      */
+    /* H_MAFF<MM> values on the seat: "MA" (enrolled in MA),           */
+    /* "FF" (FFS), "NO" (not enrolled). Verified 2026-05-05.           */
     ARRAY maff[12] $ H_MAFF01-H_MAFF12;
     ma_months = 0;
     DO i = 1 TO 12;
-        IF maff[i] = "1" THEN ma_months + 1;
+        IF maff[i] = "MA" THEN ma_months + 1;
     END;
     is_ma_admin = (ma_months > 0);
     is_ffs_admin = (ma_months = 0);
@@ -362,6 +382,8 @@ DATA PL027710.mcbs_panel;
 
     DROP i;
 RUN;
+%MEND stack_mcbs;
+%stack_mcbs;
 
 %row_count(PL027710.mcbs_panel, MCBS panel stacked);
 
@@ -415,7 +437,7 @@ PROC SQL;
         SUM(education_cat IS NOT NULL)          AS n_education,
         SUM(uses_internet_for_info IS NOT NULL) AS n_internet,
         SUM(srh IS NOT NULL)                    AS n_srh,
-        SUM(adi_national_pct IS NOT NULL)       AS n_adi,
+        SUM(adi_raw IS NOT NULL)                AS n_adi,
         SUM(poverty_ratio_ind IS NOT NULL)      AS n_ipr_ind,
         COUNT(*)                                AS n_total
     FROM PL027710.mcbs_panel

@@ -1,28 +1,43 @@
 # 5-estimate-gmm.R — Joint MLE + aggregate-moment estimator
 #
-# Uses nloptr SLSQP with bounds (alpha, delta, eta_1, eta_2 >= 0). The
+# Uses nloptr SBPLX with bounds (alpha, delta, all lambdas >= 0). The
 # objective is `compute_combined_objective` from 4-aggregate-moments.R,
-# which is -loglik + LAMBDA * sum(M^2).
+# which is -loglik + LAMBDA * sum(M^2). 21 free parameters total — see
+# theta_names in 3-individual-likelihood.R for the full layout.
 
 # ---- Initial values ------------------------------------------------
-# Anchor near the local 7-moment public estimate where applicable, else 0.
+# Anchor near the local 7-moment public estimate where applicable, else
+# theory-signed initial guesses. 21 parameters total — see theta_names in
+# 3-individual-likelihood.R for the full layout.
 
 theta0 <- c(
-  alpha       = 0.59,
-  delta       = 0.10,    # local was 0 at lower bound; start small positive
-  beta        = 0.62,
-  xi_FFS      = 5.99,
-  gamma_0     = -2.32,
-  gamma_inc   = 0.0,
-  gamma_educ  = 0.0,
-  gamma_age   = 0.0,
-  gamma_inet  = -0.5,    # internet should reduce c
-  gamma_dual  = 0.5,     # dual-eligible higher c (information-poor proxy)
-  gamma_adi   = 0.5,     # higher ADI → higher c
-  eta_1       = 0.50,
-  eta_2       = 0.59
+  # Utility (4)
+  alpha                  =  0.59,
+  delta                  =  0.10,
+  beta                   =  0.62,
+  xi_FFS                 =  5.99,
+  # Search-cost heterogeneity (9)
+  gamma_0                = -2.32,
+  gamma_inc              =  0.00,
+  gamma_educ             =  0.00,
+  gamma_age              =  0.00,
+  gamma_dual             =  0.50,    # dual-eligible higher c (information-poor proxy)
+  gamma_adi              =  0.50,    # higher ADI -> higher c
+  gamma_net              = -0.50,    # KVSITWEB use should reduce c
+  gamma_help             = -0.30,    # KCHIHELP=2 (gets help) reduces c modestly
+  gamma_delegate         = -0.50,    # KCHIHELP=3 (delegates) reduces effective c more
+  # Awareness/prominence lambdas (8) — all >= 0 by bound
+  lambda_PF_0            =  0.50,
+  lambda_PF_online       =  1.00,    # KVSITWEB=1 -> PF heavily reflected in awareness
+  lambda_PF_help         =  0.30,
+  lambda_PF_delegate     =  0.20,
+  lambda_broker_0        =  0.50,
+  lambda_broker_help     =  0.50,
+  lambda_broker_delegate =  1.00,    # delegators commonly delegate to a broker
+  lambda_inc             =  1.00     # incumbent renewal mail is universal
 )
 stopifnot(length(theta0) == length(theta_names))
+stopifnot(identical(names(theta0), theta_names))
 
 
 # ---- Optimize ------------------------------------------------------

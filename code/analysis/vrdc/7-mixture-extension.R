@@ -22,9 +22,10 @@ T_TYPES <- 3L
 #   alpha, delta, beta, xi_FFS as before
 #   c_1, c_2, c_3                     (T scalar search costs, sorted)
 #   pi_logit_inc_2, pi_logit_inc_3    (income coef in mlogit for types 2,3)
-#   pi_logit_inet_2, pi_logit_inet_3  (internet coef ... )
+#   pi_logit_inet_2, pi_logit_inet_3  (KVSITWEB coef in mixing for types 2,3)
 #   ... (other X covariates in the mixing equation)
-#   eta_1, eta_2
+#   lambda_PF_*, lambda_broker_*, lambda_inc  (prominence weights, see
+#     3-individual-likelihood.R; common across types in v1 mixture)
 
 # ---- Mixing probabilities ----
 
