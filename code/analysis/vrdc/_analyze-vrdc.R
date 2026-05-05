@@ -10,6 +10,7 @@
 #   /workspace/pl027710/upload/analysis_panel.csv     — uploaded from local
 #
 # Outputs:
+#   /workspace/pl027710/export/bene_choice_panel.csv  — estimation checkpoint (script 0)
 #   results/vrdc/theta_hat.csv         — point estimates + bounds
 #   results/vrdc/fit_diagnostics.csv   — predicted vs observed
 #   results/vrdc/se_bootstrap.csv      — clustered bootstrap SEs (deferred)
@@ -19,8 +20,12 @@ pacman::p_load(
 )
 
 # Run from project root: /workspace/pl027710/code/analysis/vrdc/.. -> ..
-source("code/analysis/vrdc/1-load-bene-panel.R")
-source("code/analysis/vrdc/2-build-choice-sets.R")
+
+# 0 builds the canonical bene × plan estimation panel (long format) and
+# writes it as a checkpoint. 1 reads the checkpoint and sets up survey
+# design + per-market plan-sets. 3 onwards consume the loaded objects.
+source("code/analysis/vrdc/0-build-bene-choice-panel.R")
+source("code/analysis/vrdc/1-load-estimation-panel.R")
 source("code/analysis/vrdc/3-individual-likelihood.R")
 source("code/analysis/vrdc/4-aggregate-moments.R")
 source("code/analysis/vrdc/5-estimate-gmm.R")

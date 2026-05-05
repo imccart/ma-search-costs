@@ -69,6 +69,8 @@ PROC SQL;
         m.race_cd               AS race_cd_mbsf,
         m.dual_mons             AS dual_mons_mbsf,
         m.hmo_mons              AS hmo_mons_mbsf,
+        m.partA_mons,
+        m.partB_mons,
         m.is_ffs                AS is_ffs_mbsf,
         m.ann_contract,
         m.ann_pbp,
@@ -116,49 +118,55 @@ PROC SQL;
         mc.education_cat,
         mc.income_cat,
         mc.income_continuous,
-        mc.poverty_ratio,
+        mc.poverty_ratio_ind,
         mc.marital_cat,
         mc.state_ssa,
         mc.county_ssa,
         mc.zip_cd,
         mc.ruca,
         mc.cbsa_type,
-        mc.adi_national_pct,
-        mc.adi_state_decile,
+        mc.adi_raw,                 /* ADI 2015 / CENSADI 2016-17 / ADINATNL 2018 — different scales */
 
         /* Insurance / coverage */
         mc.medstatus,
         mc.dual_annual,
         mc.is_dual_ever,
-        mc.partA_mons,
-        mc.partB_mons,
         mc.ma_months,
         mc.is_ma_admin,
         mc.is_ffs_admin,
-        mc.full_year_partAB,
         mc.not_esrd,
         mc.madv_self_report,
         mc.madv_years_enrolled,
-        mc.madv_monthly_premium,
+        mc.madv_annual_premium,
+
+        /* Channel flags (HITLINE) — for active-shopper sample */
+        mc.has_esi,
+        mc.has_va,
+        mc.has_tricare,
+        mc.has_rds,
+        mc.has_self_purch,
+        mc.has_ma_row,
+        mc.ma_obtained_directly,
+        mc.ma_obtained_inst,
+        mc.inst_coverage,
+        mc.active_shopper,
 
         /* Search behavior + internet (the main behavioral inputs) */
         mc.has_internet,
         mc.uses_internet_for_info,
-        mc.has_desktop,
-        mc.has_smartphone,
-        mc.has_tablet,
+        mc.has_personal_computer,
         mc.medicare_easy_understand,
         mc.medicare_self_knowledge,
         mc.easy_compare_options,
         mc.tried_find_info,
         mc.visited_medicare_site,
         mc.called_800_medicare,
-        mc.reviewed_costs,
-        mc.reviewed_services,
-        mc.compared_plans,
-        mc.compared_ma,
-        mc.compared_medigap,
         mc.who_decides_insurance,
+        mc.net_info_via_other,
+        mc.book_received,
+        mc.book_read_amount,
+        mc.book_understood,
+        mc.aware_800_medicare,
         mc.searched,
 
         /* Health */
@@ -170,7 +178,10 @@ PROC SQL;
         mc.variance_stratum,
         mc.variance_psu,
 
-        /* MBSF side — FIPS geography + annual plan ID + lag */
+        /* MBSF side — FIPS geography + annual plan ID + lag.           */
+        /* partA_mons / partB_mons come from MBSF (BENE_HI_CVRAGE_TOT_  */
+        /* MONS / BENE_SMI_CVRAGE_TOT_MONS); they are NOT in MCBS       */
+        /* 2015-2018 (no MYENROLL segment in that era).                  */
         b.state_cnty_fips,
         b.moved_within_year,
         b.age_mbsf,
@@ -178,6 +189,10 @@ PROC SQL;
         b.race_cd_mbsf,
         b.dual_mons_mbsf,
         b.hmo_mons_mbsf,
+        b.partA_mons,
+        b.partB_mons,
+        CASE WHEN b.partA_mons = 12 AND b.partB_mons = 12 THEN 1 ELSE 0 END
+                                       AS full_year_partAB,
         b.is_ffs_mbsf,
         b.ann_contract,
         b.ann_pbp,

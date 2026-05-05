@@ -6,8 +6,8 @@ R-side individual-level structural estimation. Reads the bene panel exported by 
 
 ```
 _analyze-vrdc.R              master driver
-1-load-bene-panel.R          read CSV, derive X_i, build survey design
-2-build-choice-sets.R        link to structural_panel.csv, build markets[] list
+0-build-bene-choice-panel.R  join bene panel × structural_panel, write checkpoint CSV
+1-load-estimation-panel.R    read checkpoint, declare svydesign, build markets[] list
 3-individual-likelihood.R    per-bene Stigler-search choice probability
 4-aggregate-moments.R        survey-weighted aggregate moments
 5-estimate-gmm.R             nloptr SBPLX optimization
@@ -17,11 +17,17 @@ _analyze-vrdc.R              master driver
 
 Source `_analyze-vrdc.R` to run end-to-end.
 
+The bene × plan panel is materialized as a checkpoint so (a) restarts after a crashed optimizer don't re-run the join, (b) diagnostics are easy on the canonical estimation object, and (c) counterfactuals are a `copy(bcp)` away.
+
 ## Inputs (must already be in VRDC seat)
 
-- `/workspace/pl027710/export/bene_panel.csv` — produced by data-build
-- `/workspace/pl027710/upload/structural_panel.csv` — uploaded from local
+- `/workspace/pl027710/export/bene_panel.csv` — produced by data-build (SAS)
+- `/workspace/pl027710/upload/structural_panel.csv` — uploaded from local (with prominence columns from `code/data-build/14-build-prominence-vars.R`)
 - `/workspace/pl027710/upload/analysis_panel.csv` — uploaded from local
+
+## Checkpoint
+
+- `/workspace/pl027710/export/bene_choice_panel.csv` — written by script 0; one row per (bene, plan in bene's market). This is the canonical estimation panel.
 
 ## Outputs
 

@@ -8,6 +8,9 @@ data/
 # Background literature (PDFs, notes — not tracked)
 background/
 
+# Agents — Claude/AI working notes (per /kickoff convention)
+agents/
+
 # Scratch/temporary files
 scratch/
 
