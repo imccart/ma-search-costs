@@ -1,9 +1,10 @@
 /* ------------------------------------------------------------ */
 /* TITLE:        MA encounter extraction — bene-year utilization */
 /* PROJECT:      ma-search-costs                                 */
-/* INPUT:        ENRFPL<yr>.{IP,SNF,HHA,OP,CARRIER,DME}_BASE_ENC  */
+/* INPUT:        ENRFPL<yr>.{IP,SNF,HHA,OP,CARRIER}_BASE_ENC      */
 /*               ENRFPL<yr>.{IP,SNF,HHA,OP}_REVENUE_ENC           */
-/*               ENRFPL<yr>.{CARRIER,DME}_LINE_ENC                */
+/*               ENRFPL<yr>.CARRIER_LINE_ENC                      */
+/* (DME omitted — not in this DUA.)                               */
 /* OUTPUT:       PL027710.ma_util_panel  (wide BENE_ID x year)    */
 /*               PL027710.ma_util_<svc>  (per-svc stacked panels) */
 /* ------------------------------------------------------------ */
@@ -144,27 +145,7 @@
 
 
 /* ============================================================ */
-/* 4f. DME — line items (LINE_SRVC_CNT)                          */
-/* ============================================================ */
-
-%MACRO dme_util(yr);
-    PROC SQL;
-        CREATE TABLE WORK.dme_&yr AS
-        SELECT b.BENE_ID,
-               20&yr                       AS year,
-               COUNT(*)                    AS n_dme_lines,
-               SUM(l.LINE_SRVC_CNT)        AS n_dme_units
-        FROM ENRFPL&yr..DME_BASE_ENC AS b
-        INNER JOIN ENRFPL&yr..DME_LINE_ENC AS l
-            ON b.ENC_JOIN_KEY = l.ENC_JOIN_KEY
-        GROUP BY b.BENE_ID;
-    QUIT;
-    %row_count(WORK.dme_&yr, DME &yr);
-%MEND dme_util;
-
-
-/* ============================================================ */
-/* 4g. Run all six macros across 4 years, then stack             */
+/* 4f. Run all five macros across 4 years, then stack            */
 /* ============================================================ */
 
 %MACRO pull_all_enc;
@@ -174,7 +155,6 @@
         %hha_util(&yr);
         %op_util(&yr);
         %car_util(&yr);
-        %dme_util(&yr);
     %END;
 %MEND pull_all_enc;
 %pull_all_enc;
@@ -190,13 +170,12 @@
 %stack_svc(hha);
 %stack_svc(op);
 %stack_svc(car);
-%stack_svc(dme);
 
 
 /* ============================================================ */
-/* 4h. Combined wide bene-year panel                             */
+/* 4g. Combined wide bene-year panel                             */
 /* ------------------------------------------------------------ */
-/* Build a spine = union of (BENE_ID, year) across all 6         */
+/* Build a spine = union of (BENE_ID, year) across all 5         */
 /* categories, then LEFT JOIN each category back. Benes with     */
 /* utilization in one category but not another keep a row with   */
 /* 0 in the empty columns.                                       */
@@ -208,8 +187,7 @@ PROC SQL;
     SELECT BENE_ID, year FROM PL027710.ma_util_snf  UNION
     SELECT BENE_ID, year FROM PL027710.ma_util_hha  UNION
     SELECT BENE_ID, year FROM PL027710.ma_util_op   UNION
-    SELECT BENE_ID, year FROM PL027710.ma_util_car  UNION
-    SELECT BENE_ID, year FROM PL027710.ma_util_dme;
+    SELECT BENE_ID, year FROM PL027710.ma_util_car;
 QUIT;
 %row_count(WORK.spine, util spine);
 
@@ -226,23 +204,20 @@ PROC SQL;
            COALESCE(op.n_op_er_visits,    0)  AS n_op_er_visits,
            COALESCE(car.n_car_lines,      0)  AS n_car_lines,
            COALESCE(car.n_car_pcp_lines,  0)  AS n_car_pcp_lines,
-           COALESCE(car.n_car_spec_lines, 0)  AS n_car_spec_lines,
-           COALESCE(dme.n_dme_lines,      0)  AS n_dme_lines,
-           COALESCE(dme.n_dme_units,      0)  AS n_dme_units
+           COALESCE(car.n_car_spec_lines, 0)  AS n_car_spec_lines
     FROM WORK.spine                AS s
     LEFT JOIN PL027710.ma_util_ip  AS ip  ON s.BENE_ID = ip.BENE_ID  AND s.year = ip.year
     LEFT JOIN PL027710.ma_util_snf AS snf ON s.BENE_ID = snf.BENE_ID AND s.year = snf.year
     LEFT JOIN PL027710.ma_util_hha AS hha ON s.BENE_ID = hha.BENE_ID AND s.year = hha.year
     LEFT JOIN PL027710.ma_util_op  AS op  ON s.BENE_ID = op.BENE_ID  AND s.year = op.year
-    LEFT JOIN PL027710.ma_util_car AS car ON s.BENE_ID = car.BENE_ID AND s.year = car.year
-    LEFT JOIN PL027710.ma_util_dme AS dme ON s.BENE_ID = dme.BENE_ID AND s.year = dme.year ;
+    LEFT JOIN PL027710.ma_util_car AS car ON s.BENE_ID = car.BENE_ID AND s.year = car.year ;
 QUIT;
 PROC DELETE DATA=WORK.spine; RUN;
 %row_count(PL027710.ma_util_panel, ma_util_panel);
 
 
 /* ============================================================ */
-/* 4i. Diagnostics                                                */
+/* 4h. Diagnostics                                                */
 /* ============================================================ */
 
 TITLE "MA encounter utilization — distinct benes by year";
@@ -254,7 +229,6 @@ PROC SQL;
            SUM(n_hha_episodes > 0)                          AS n_with_hha,
            SUM(n_op_visits > 0)                             AS n_with_op,
            SUM(n_car_lines > 0)                             AS n_with_car,
-           SUM(n_dme_lines > 0)                             AS n_with_dme,
            MEAN(n_ip_stays)         FORMAT=6.2              AS mean_ip_stays,
            MEAN(n_ip_days)          FORMAT=6.2              AS mean_ip_days,
            MEAN(n_snf_days)         FORMAT=6.2              AS mean_snf_days,
@@ -280,7 +254,6 @@ TITLE;
         PROC DELETE DATA=WORK.hha_&yr; RUN;
         PROC DELETE DATA=WORK.op_&yr;  RUN;
         PROC DELETE DATA=WORK.car_&yr; RUN;
-        PROC DELETE DATA=WORK.dme_&yr; RUN;
     %END;
 %MEND cleanup_enc;
 %cleanup_enc;
