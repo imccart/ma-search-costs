@@ -1,7 +1,7 @@
 # 1-load-estimation-panel.R — Read the bene × plan checkpoint, set up
 # survey design and the bene-level summary needed for moment matching.
 #
-# Input:  /workspace/pl027710/export/bene_choice_panel.csv (script 0)
+# Input:  data/output/bene_choice_panel.csv (script 0)
 # Outputs (in R env):
 #   bcp          — long-format bene × plan-in-market panel (data.table)
 #   bene         — bene-year summary (one row per BASE_ID×year, dedup of bcp)
@@ -10,7 +10,7 @@
 #   bene_to_market — vector mapping bene row index -> market index
 #   choice_idx   — vector giving within-market index of the chosen plan
 
-bcp_path <- "/workspace/pl027710/export/bene_choice_panel.csv"
+bcp_path <- "data/output/bene_choice_panel.csv"
 if (!file.exists(bcp_path)) stop("bene_choice_panel.csv not found at ", bcp_path,
                                   "\nRun 0-build-bene-choice-panel.R first.")
 

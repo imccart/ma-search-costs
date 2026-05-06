@@ -9,15 +9,15 @@
 # For FFS benes: utilization comes from the FFS claims panel (script 5).
 # Cost-sharing schedule comes from plan_county_benefits.csv (uploaded local).
 #
-# Inputs:
-#   /workspace/pl027710/upload/plan_county_benefits.csv   plan x county x year cost-sharing
-#   PL027710.bene_panel                                   bene-year analytic sample
-#   PL027710.ma_util_panel                                MA bene-year utilization
-#   PL027710.ffs_util_panel                               FFS bene-year utilization
+# Inputs (RStudio project root = ma-search/):
+#   data/input/plan_county_benefits.csv     uploaded local PBP cost-sharing
+#   data/input/bene_panel.csv               SAS-exported bene-year panel (script 3)
+#   data/input/ma_util_panel.csv            SAS-exported MA utilization (script 4)
+#   data/input/ffs_util_panel.csv           SAS-exported FFS utilization (script 5)
 #
 # Output:
-#   /workspace/pl027710/export/bene_cost_sharing.csv      one row per (BENE_ID, plan_id, year)
-#                                                         with EC[c|i,j] and Var_C_j
+#   data/output/bene_cost_sharing.csv       one row per (BENE_ID, plan_id, year)
+#                                           with EC[c|i,j] and Var_C_j
 #
 # Service categories (matched to the existing dominance pipeline at
 # code/data-build/_utilization-profiles.R):
@@ -35,11 +35,11 @@ pacman::p_load(data.table)
 # Inputs
 # ---------------------------------------------------------------------------
 
-pbp_path     <- "/workspace/pl027710/upload/plan_county_benefits.csv"
-bene_path    <- "/workspace/pl027710/export/bene_panel.csv"
-ma_util_path <- "/workspace/pl027710/export/ma_util_panel.csv"
-ffs_util_path<- "/workspace/pl027710/export/ffs_util_panel.csv"
-out_path     <- "/workspace/pl027710/export/bene_cost_sharing.csv"
+pbp_path      <- "data/input/plan_county_benefits.csv"
+bene_path     <- "data/input/bene_panel.csv"
+ma_util_path  <- "data/input/ma_util_panel.csv"
+ffs_util_path <- "data/input/ffs_util_panel.csv"
+out_path      <- "data/output/bene_cost_sharing.csv"
 
 for (p in c(pbp_path, bene_path, ma_util_path, ffs_util_path)) {
   if (!file.exists(p)) stop("Required input not found: ", p)

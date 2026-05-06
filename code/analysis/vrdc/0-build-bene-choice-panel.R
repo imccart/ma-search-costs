@@ -7,17 +7,17 @@
 #   - plan-level attributes (EC, Var, Star Rating, prominence inputs)
 #   - bene × plan items (incumbent flag, is_chosen indicator)
 #
-# Inputs:
-#   /workspace/pl027710/export/bene_panel.csv          — VRDC SAS extraction
-#   /workspace/pl027710/upload/structural_panel.csv    — uploaded plan attributes
-#   /workspace/pl027710/export/bene_cost_sharing.csv   — bene-specific EC (script 0a)
+# Inputs (RStudio project root = ma-search/):
+#   data/input/bene_panel.csv          — SAS-exported bene panel (script 3)
+#   data/input/structural_panel.csv    — uploaded plan attributes
+#   data/output/bene_cost_sharing.csv  — bene-specific EC (script 0a)
 # Output:
-#   /workspace/pl027710/export/bene_choice_panel.csv   — checkpoint
+#   data/output/bene_choice_panel.csv  — checkpoint
 
-bene_path   <- "/workspace/pl027710/export/bene_panel.csv"
-panel_path  <- "/workspace/pl027710/upload/structural_panel.csv"
-ec_path     <- "/workspace/pl027710/export/bene_cost_sharing.csv"
-out_path    <- "/workspace/pl027710/export/bene_choice_panel.csv"
+bene_path   <- "data/input/bene_panel.csv"
+panel_path  <- "data/input/structural_panel.csv"
+ec_path     <- "data/output/bene_cost_sharing.csv"
+out_path    <- "data/output/bene_choice_panel.csv"
 
 if (!file.exists(bene_path))   stop("bene_panel.csv not found at ",       bene_path)
 if (!file.exists(panel_path))  stop("structural_panel.csv not found at ", panel_path)

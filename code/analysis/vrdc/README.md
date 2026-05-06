@@ -1,32 +1,39 @@
 # VRDC analysis (`code/analysis/vrdc/`)
 
-R-side individual-level structural estimation. Reads the bene panel exported by `code/data-build/vrdc/`, attaches plan attributes from the locally-built `structural_panel.csv`, and estimates the Stigler-search model via combined MLE + aggregate moments.
+R-side individual-level structural estimation. Runs in a Jupyter analytic container (separate from SAS Enterprise Guide) under an RStudio project rooted at `ma-search/`. Reads the bene panel and utilization panels exported manually from SAS, projects bene utilization through PBP cost-sharing schedules, and estimates the Stigler-search model via combined MLE + aggregate moments.
 
 ## Run order
 
 ```
-_analyze-vrdc.R              master driver
-0-build-bene-choice-panel.R  join bene panel × structural_panel, write checkpoint CSV
-1-load-estimation-panel.R    read checkpoint, declare svydesign, build markets[] list
-3-individual-likelihood.R    per-bene Stigler-search choice probability
-4-aggregate-moments.R        survey-weighted aggregate moments
-5-estimate-gmm.R             nloptr SBPLX optimization
-6-fit-diagnostics.R          predicted vs observed by demographic group
-7-mixture-extension.R        finite-mixture c_i (deferred)
+_analyze-vrdc.R                 master driver
+0a-project-bene-cost-sharing.R  bene-specific EC[c|i,j] from util x PBP schedule
+0-build-bene-choice-panel.R     join bene panel x structural_panel + EC, write checkpoint
+1-load-estimation-panel.R       read checkpoint, declare svydesign, build markets[] list
+3-individual-likelihood.R       per-bene Stigler-search choice probability
+4-aggregate-moments.R           survey-weighted aggregate moments
+5-estimate-gmm.R                nloptr SBPLX optimization
+6-fit-diagnostics.R              predicted vs observed by demographic group
+7-mixture-extension.R           finite-mixture c_i (deferred)
 ```
 
-Source `_analyze-vrdc.R` to run end-to-end.
+Source `_analyze-vrdc.R` from the project root to run end-to-end.
 
 The bene × plan panel is materialized as a checkpoint so (a) restarts after a crashed optimizer don't re-run the join, (b) diagnostics are easy on the canonical estimation object, and (c) counterfactuals are a `copy(bcp)` away.
 
-## Inputs (must already be in VRDC seat)
+## Inputs (in `data/input/`, all CSV)
 
-- `/workspace/pl027710/export/bene_panel.csv` — produced by data-build (SAS)
-- `/workspace/pl027710/upload/structural_panel.csv` — uploaded from local (with prominence columns from `code/data-build/14-build-prominence-vars.R`)
+- `bene_panel.csv` — SAS-exported bene-year panel (data-build script 3)
+- `ma_util_panel.csv` — SAS-exported MA encounter utilization (data-build script 4)
+- `ffs_util_panel.csv` — SAS-exported FFS claims utilization (data-build script 5)
+- `structural_panel.csv` — uploaded local; plan attributes (with prominence cols from `code/data-build/14-build-prominence-vars.R`)
+- `plan_county_benefits.csv` — uploaded local; PBP cost-sharing schedule per (plan, county, year)
 
-## Checkpoint
+CSV exports from SAS Enterprise Guide are done manually (PROC EXPORT or right-click "Export") into `ma-search/data/input/` since the Jupyter container and the SAS Enterprise Guide workspace are separate environments.
 
-- `/workspace/pl027710/export/bene_choice_panel.csv` — written by script 0; one row per (bene, plan in bene's market). This is the canonical estimation panel.
+## Checkpoints (in `data/output/`)
+
+- `bene_cost_sharing.csv` — written by script 0a; one row per (bene, plan-in-market) with EC[c|i,j] and Var(C|j)
+- `bene_choice_panel.csv` — written by script 0; one row per (bene, plan-in-market) with all attributes joined. Canonical estimation panel.
 
 ## Outputs
 

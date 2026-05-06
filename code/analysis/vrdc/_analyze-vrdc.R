@@ -4,16 +4,16 @@
 # data extracted by code/data-build/vrdc/. See background/vrdc-plan.md
 # for the full plan.
 #
-# Inputs (must already exist in the VRDC seat):
-#   PL027710.bene_panel                                  from data-build script 3
-#   PL027710.ma_util_panel                               from data-build script 4
-#   PL027710.ffs_util_panel                              from data-build script 5
-#   /workspace/pl027710/upload/structural_panel.csv      uploaded local plan attributes
-#   /workspace/pl027710/upload/plan_county_benefits.csv  uploaded local PBP cost-sharing
+# Inputs (RStudio project root = ma-search/, run from there):
+#   data/input/bene_panel.csv             SAS export from data-build script 3
+#   data/input/ma_util_panel.csv          SAS export from data-build script 4
+#   data/input/ffs_util_panel.csv         SAS export from data-build script 5
+#   data/input/structural_panel.csv       uploaded local plan attributes
+#   data/input/plan_county_benefits.csv   uploaded local PBP cost-sharing
 #
 # Outputs:
-#   /workspace/pl027710/export/bene_cost_sharing.csv  bene-plan EC[c|i,j] (script 0a)
-#   /workspace/pl027710/export/bene_choice_panel.csv  estimation checkpoint (script 0)
+#   data/output/bene_cost_sharing.csv  bene-plan EC[c|i,j] (script 0a)
+#   data/output/bene_choice_panel.csv  estimation checkpoint (script 0)
 #   results/vrdc/theta_hat.csv         point estimates + bounds
 #   results/vrdc/fit_diagnostics.csv   predicted vs observed
 #   results/vrdc/se_bootstrap.csv      clustered bootstrap SEs (deferred)
@@ -21,8 +21,6 @@
 pacman::p_load(
   tidyverse, fixest, survey, nloptr, data.table
 )
-
-# Run from project root: /workspace/pl027710/code/analysis/vrdc/.. -> ..
 
 # 0a builds bene-specific EC[c|i,j] and Var(C|j) by projecting each bene's
 # claims utilization through every plan's PBP cost-sharing schedule.
