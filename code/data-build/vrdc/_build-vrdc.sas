@@ -23,6 +23,7 @@
 /*   3. 2-extract-mcbs.sas           MCBS 2015-2018 multi-segment  */
 /*   4. 3-build-bene-panel.sas       MCBS x MCBSXWLK x MBSF + lag  */
 /*   5. 4-extract-ma-encounters.sas  MA encounter utilization      */
+/*   6. 5-extract-ffs-claims.sas     FFS claims utilization + obs C*/
 /*                                                                  */
 /* CSV export off the seat is done manually via the CMS clearance  */
 /* protocol — there is no in-pipeline export script.                */
@@ -39,5 +40,6 @@
 %INCLUDE "&project_root/2-extract-mcbs.sas";
 %INCLUDE "&project_root/3-build-bene-panel.sas";
 %INCLUDE "&project_root/4-extract-ma-encounters.sas";
+%INCLUDE "&project_root/5-extract-ffs-claims.sas";
 
 %PUT NOTE: VRDC data-build complete ;

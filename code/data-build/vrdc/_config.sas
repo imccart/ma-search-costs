@@ -29,6 +29,11 @@
 /*   ENRFPL<yr>.<svc>_LINE_ENC     (carrier, dme)                 */
 /*   ENRFPL<yr>.<svc>_REVENUE_ENC  (op, snf, hha, ip)             */
 /*       <svc> in {IP, SNF, HHA, OP, CARRIER, DME}, <yr> 15..18   */
+/*   MEDPAR.MEDPAR_<yyyy>           (FFS IP+SNF stays, annual)    */
+/*   RIF<yyyy>.HHA_CLAIMS_<MM>     +HHA_REVENUE_<MM>              */
+/*   RIF<yyyy>.OUTPATIENT_CLAIMS_<MM> +OUTPATIENT_REVENUE_<MM>    */
+/*   RIF<yyyy>.BCARRIER_LINE_<MM>                                 */
+/*       MM in 01..12, yyyy in 2015..2018                         */
 /*                                                                */
 /* Do NOT add any LIBNAME statements. If a library appears       */
 /* undefined in the SAS log, that's a seat-config issue — fix    */

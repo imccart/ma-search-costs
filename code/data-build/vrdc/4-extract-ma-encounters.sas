@@ -60,21 +60,21 @@
 %MACRO hha_util(yr);
     PROC SQL;
         CREATE TABLE WORK.hha_visits_&yr AS
-        SELECT CLM_CNTL_NUM,
+        SELECT ENC_JOIN_KEY,
                SUM(REV_CNTR_UNIT_CNT) AS n_visits
         FROM ENRFPL&yr..HHA_REVENUE_ENC
-        GROUP BY CLM_CNTL_NUM;
+        GROUP BY ENC_JOIN_KEY;
     QUIT;
 
     PROC SQL;
         CREATE TABLE WORK.hha_&yr AS
         SELECT b.BENE_ID,
                20&yr                  AS year,
-               COUNT(DISTINCT b.CLM_CNTL_NUM)  AS n_hha_episodes,
+               COUNT(DISTINCT b.ENC_JOIN_KEY)  AS n_hha_episodes,
                COALESCE(SUM(v.n_visits), 0)    AS n_hha_visits
         FROM ENRFPL&yr..HHA_BASE_ENC AS b
         LEFT JOIN WORK.hha_visits_&yr AS v
-            ON b.CLM_CNTL_NUM = v.CLM_CNTL_NUM
+            ON b.ENC_JOIN_KEY = v.ENC_JOIN_KEY
         GROUP BY b.BENE_ID;
     QUIT;
     PROC DELETE DATA=WORK.hha_visits_&yr; RUN;
@@ -92,7 +92,7 @@
 %MACRO op_util(yr);
     PROC SQL;
         CREATE TABLE WORK.op_er_&yr AS
-        SELECT DISTINCT CLM_CNTL_NUM
+        SELECT DISTINCT ENC_JOIN_KEY
         FROM ENRFPL&yr..OP_REVENUE_ENC
         WHERE REV_CNTR BETWEEN "0450" AND "0459";
     QUIT;
@@ -102,11 +102,11 @@
         SELECT b.BENE_ID,
                20&yr                  AS year,
                COUNT(*)               AS n_op_visits,
-               SUM(CASE WHEN er.CLM_CNTL_NUM IS NOT NULL THEN 1 ELSE 0 END)
+               SUM(CASE WHEN er.ENC_JOIN_KEY IS NOT NULL THEN 1 ELSE 0 END)
                                       AS n_op_er_visits
         FROM ENRFPL&yr..OP_BASE_ENC AS b
         LEFT JOIN WORK.op_er_&yr AS er
-            ON b.CLM_CNTL_NUM = er.CLM_CNTL_NUM
+            ON b.ENC_JOIN_KEY = er.ENC_JOIN_KEY
         GROUP BY b.BENE_ID;
     QUIT;
     PROC DELETE DATA=WORK.op_er_&yr; RUN;
@@ -136,7 +136,7 @@
                         THEN 1 ELSE 0 END)      AS n_car_spec_lines
         FROM ENRFPL&yr..CARRIER_BASE_ENC AS b
         INNER JOIN ENRFPL&yr..CARRIER_LINE_ENC AS l
-            ON b.CLM_CNTL_NUM = l.CLM_CNTL_NUM
+            ON b.ENC_JOIN_KEY = l.ENC_JOIN_KEY
         GROUP BY b.BENE_ID;
     QUIT;
     %row_count(WORK.car_&yr, Carrier &yr);
@@ -156,7 +156,7 @@
                SUM(l.LINE_SRVC_CNT)        AS n_dme_units
         FROM ENRFPL&yr..DME_BASE_ENC AS b
         INNER JOIN ENRFPL&yr..DME_LINE_ENC AS l
-            ON b.CLM_CNTL_NUM = l.CLM_CNTL_NUM
+            ON b.ENC_JOIN_KEY = l.ENC_JOIN_KEY
         GROUP BY b.BENE_ID;
     QUIT;
     %row_count(WORK.dme_&yr, DME &yr);
