@@ -1,4 +1,4 @@
-# 0a-project-bene-cost-sharing.R — Bene-specific EC[c|i,j] and Var(C|j)
+# 0-project-bene-cost-sharing.R — Bene-specific EC[c|i,j] and Var(C|j)
 #
 # Replaces the population-level mean_cost / var_cost columns from
 # structural_panel.csv (which were built from stylized utilization profiles)

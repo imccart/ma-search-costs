@@ -1,4 +1,4 @@
-# 0-build-bene-choice-panel.R — Materialize the estimation panel
+# 1-build-bene-choice-panel.R — Materialize the estimation panel
 #
 # Produces the canonical long-format bene × plan panel that downstream
 # estimation, diagnostics, and counterfactual scripts consume. One row
@@ -10,7 +10,7 @@
 # Inputs (RStudio project root = ma-search/):
 #   data/input/bene_panel.csv          — SAS-exported bene panel (script 3)
 #   data/input/structural_panel.csv    — uploaded plan attributes
-#   data/output/bene_cost_sharing.csv  — bene-specific EC (script 0a)
+#   data/output/bene_cost_sharing.csv  — bene-specific EC (script 0)
 # Output:
 #   data/output/bene_choice_panel.csv  — checkpoint
 
@@ -22,7 +22,7 @@ out_path    <- "data/output/bene_choice_panel.csv"
 if (!file.exists(bene_path))   stop("bene_panel.csv not found at ",       bene_path)
 if (!file.exists(panel_path))  stop("structural_panel.csv not found at ", panel_path)
 if (!file.exists(ec_path))     stop("bene_cost_sharing.csv not found at ", ec_path,
-                                    "\n  Run script 0a-project-bene-cost-sharing.R first.")
+                                    "\n  Run script 0-project-bene-cost-sharing.R first.")
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +110,7 @@ bene <- bene %>%
 # ---------------------------------------------------------------------------
 # 3. Load plan-attribute panel. Drop population mean_cost / var_cost / sd_cost
 # columns — those are stylized-profile averages from the local data-build and
-# are replaced below with bene-specific EC[c|i,j] from script 0a.
+# are replaced below with bene-specific EC[c|i,j] from script 0.
 # ---------------------------------------------------------------------------
 
 panel <- fread(panel_path,
@@ -146,7 +146,7 @@ message(sprintf("Plans per bene-year: median=%d, mean=%.1f, max=%d",
 
 
 # ---------------------------------------------------------------------------
-# 4b. Inner-join bene-specific cost-sharing (EC and Var_C from script 0a)
+# 4b. Inner-join bene-specific cost-sharing (EC and Var_C from script 0)
 # ---------------------------------------------------------------------------
 
 ec <- fread(ec_path, select = c("BENE_ID", "year", "plan_id", "EC", "Var_C_j"))

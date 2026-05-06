@@ -5,15 +5,15 @@ R-side individual-level structural estimation. Runs in a Jupyter analytic contai
 ## Run order
 
 ```
-_analyze-vrdc.R                 master driver
-0a-project-bene-cost-sharing.R  bene-specific EC[c|i,j] from util x PBP schedule
-0-build-bene-choice-panel.R     join bene panel x structural_panel + EC, write checkpoint
-1-load-estimation-panel.R       read checkpoint, declare svydesign, build markets[] list
-3-individual-likelihood.R       per-bene Stigler-search choice probability
-4-aggregate-moments.R           survey-weighted aggregate moments
-5-estimate-gmm.R                nloptr SBPLX optimization
-6-fit-diagnostics.R              predicted vs observed by demographic group
-7-mixture-extension.R           finite-mixture c_i (deferred)
+_analyze-vrdc.R                master driver
+0-project-bene-cost-sharing.R  bene-specific EC[c|i,j] from util x PBP schedule
+1-build-bene-choice-panel.R    join bene panel x structural_panel + EC, write checkpoint
+2-load-estimation-panel.R      read checkpoint, declare svydesign, build markets[] list
+3-individual-likelihood.R      per-bene Stigler-search choice probability
+4-aggregate-moments.R          survey-weighted aggregate moments
+5-estimate-gmm.R               nloptr SBPLX optimization
+6-fit-diagnostics.R            predicted vs observed by demographic group
+7-mixture-extension.R          finite-mixture c_i (deferred)
 ```
 
 Source `_analyze-vrdc.R` from the project root to run end-to-end.
@@ -32,8 +32,8 @@ CSV exports from SAS Enterprise Guide are done manually (PROC EXPORT or right-cl
 
 ## Checkpoints (in `data/output/`)
 
-- `bene_cost_sharing.csv` — written by script 0a; one row per (bene, plan-in-market) with EC[c|i,j] and Var(C|j)
-- `bene_choice_panel.csv` — written by script 0; one row per (bene, plan-in-market) with all attributes joined. Canonical estimation panel.
+- `bene_cost_sharing.csv` — written by script 0; one row per (bene, plan-in-market) with EC[c|i,j] and Var(C|j)
+- `bene_choice_panel.csv` — written by script 1; one row per (bene, plan-in-market) with all attributes joined. Canonical estimation panel.
 
 ## Outputs
 
