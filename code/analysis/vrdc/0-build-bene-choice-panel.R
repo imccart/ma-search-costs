@@ -8,17 +8,21 @@
 #   - bene × plan items (incumbent flag, is_chosen indicator)
 #
 # Inputs:
-#   /workspace/pl027710/export/bene_panel.csv         — VRDC SAS extraction
-#   /workspace/pl027710/upload/structural_panel.csv   — uploaded local panel
+#   /workspace/pl027710/export/bene_panel.csv          — VRDC SAS extraction
+#   /workspace/pl027710/upload/structural_panel.csv    — uploaded plan attributes
+#   /workspace/pl027710/export/bene_cost_sharing.csv   — bene-specific EC (script 0a)
 # Output:
-#   /workspace/pl027710/export/bene_choice_panel.csv  — checkpoint
+#   /workspace/pl027710/export/bene_choice_panel.csv   — checkpoint
 
-bene_path  <- "/workspace/pl027710/export/bene_panel.csv"
-panel_path <- "/workspace/pl027710/upload/structural_panel.csv"
-out_path   <- "/workspace/pl027710/export/bene_choice_panel.csv"
+bene_path   <- "/workspace/pl027710/export/bene_panel.csv"
+panel_path  <- "/workspace/pl027710/upload/structural_panel.csv"
+ec_path     <- "/workspace/pl027710/export/bene_cost_sharing.csv"
+out_path    <- "/workspace/pl027710/export/bene_choice_panel.csv"
 
-if (!file.exists(bene_path))  stop("bene_panel.csv not found at ",  bene_path)
-if (!file.exists(panel_path)) stop("structural_panel.csv not found at ", panel_path)
+if (!file.exists(bene_path))   stop("bene_panel.csv not found at ",       bene_path)
+if (!file.exists(panel_path))  stop("structural_panel.csv not found at ", panel_path)
+if (!file.exists(ec_path))     stop("bene_cost_sharing.csv not found at ", ec_path,
+                                    "\n  Run script 0a-project-bene-cost-sharing.R first.")
 
 
 # ---------------------------------------------------------------------------
@@ -104,12 +108,15 @@ bene <- bene %>%
 
 
 # ---------------------------------------------------------------------------
-# 3. Load plan-attribute panel
+# 3. Load plan-attribute panel. Drop population mean_cost / var_cost / sd_cost
+# columns — those are stylized-profile averages from the local data-build and
+# are replaced below with bene-specific EC[c|i,j] from script 0a.
 # ---------------------------------------------------------------------------
 
 panel <- fread(panel_path,
   colClasses = c(county_fips = "character"))
-message(sprintf("Loaded structural_panel.csv: %d rows, %d unique plan-county-years",
+panel[, c("mean_cost", "var_cost", "sd_cost") := NULL]
+message(sprintf("Loaded structural_panel.csv: %d rows, %d unique plan-county-years (dropped population cost columns)",
                 nrow(panel), nrow(unique(panel[, .(county_fips, year, plan_id)]))))
 
 
@@ -139,12 +146,26 @@ message(sprintf("Plans per bene-year: median=%d, mean=%.1f, max=%d",
 
 
 # ---------------------------------------------------------------------------
+# 4b. Inner-join bene-specific cost-sharing (EC and Var_C from script 0a)
+# ---------------------------------------------------------------------------
+
+ec <- fread(ec_path, select = c("BENE_ID", "year", "plan_id", "EC", "Var_C_j"))
+setnames(ec, c("EC", "Var_C_j"), c("mean_cost", "var_cost"))
+
+n_before <- nrow(bcp)
+bcp <- merge(bcp, ec, by = c("BENE_ID", "year", "plan_id"), all.x = TRUE)
+message(sprintf("After EC merge: %d rows (was %d). Bene-plan pairs without EC: %d",
+                nrow(bcp), n_before, sum(is.na(bcp$mean_cost))))
+
+
+# ---------------------------------------------------------------------------
 # 5. Bene × plan attributes
 # ---------------------------------------------------------------------------
 
 bcp[, `:=`(
   is_chosen      = as.integer(plan_id == chosen_plan_id),
   incumbent_bene = as.integer(plan_id == prior_plan_id & prior_plan_id != ""),
+  sd_cost        = sqrt(pmax(var_cost, 0)),
   # Broker density per 1k Medicare eligibles in the county-year. ins_brokers_estab
   # (count) and total_eligibles join from structural_panel.csv at the county-year
   # level; every plan-row in the same (county, year) carries the same values.
