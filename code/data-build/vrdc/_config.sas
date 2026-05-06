@@ -29,7 +29,8 @@
 /*   ENRFPL<yr>.<svc>_LINE_ENC     (carrier, dme)                 */
 /*   ENRFPL<yr>.<svc>_REVENUE_ENC  (op, snf, hha, ip)             */
 /*       <svc> in {IP, SNF, HHA, OP, CARRIER, DME}, <yr> 15..18   */
-/*   MEDPAR.MEDPAR_<yyyy>           (FFS IP+SNF stays, annual)    */
+/*   RIF<yyyy>.INPATIENT_CLAIMS_<MM>                              */
+/*   RIF<yyyy>.SNF_CLAIMS_<MM>                                    */
 /*   RIF<yyyy>.HHA_CLAIMS_<MM>     +HHA_REVENUE_<MM>              */
 /*   RIF<yyyy>.OUTPATIENT_CLAIMS_<MM> +OUTPATIENT_REVENUE_<MM>    */
 /*   RIF<yyyy>.BCARRIER_LINE_<MM>                                 */

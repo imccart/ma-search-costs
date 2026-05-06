@@ -10,7 +10,7 @@ _config.sas
 2-extract-mcbs.sas             MCBS 2015-2018 -> PL027710.mcbs_panel
 3-build-bene-panel.sas         join via MCBSXWLK -> PL027710.bene_panel
 4-extract-ma-encounters.sas    ENRFPL15-18 -> PL027710.ma_util_panel
-5-extract-ffs-claims.sas       MEDPAR + RIF15-18 -> PL027710.ffs_util_panel
+5-extract-ffs-claims.sas       RIF2015-2018 -> PL027710.ffs_util_panel
 ```
 
 Use `_build-vrdc.sas` as the master driver. CSV export off the seat is done
@@ -39,7 +39,7 @@ PL027710.bene_panel             MCBS x MBSF, lagged plan, incumbent flag
 PL027710.ma_util_panel          MA encounter utilization (BENE_ID x year)
 PL027710.ma_util_<svc>          per-service stacked panels (ip/snf/hha/op/car/dme)
 PL027710.ffs_util_panel         FFS claims utilization + observed cost-share
-PL027710.ffs_util_<svc>         per-service stacked panels (ipsnf/hha/op/car)
+PL027710.ffs_util_<svc>         per-service stacked panels (ip/snf/hha/op/car)
 ```
 
 Datasets stay inside the VRDC enclave; CSV exports off-VRDC require CMS

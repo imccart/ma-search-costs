@@ -2,7 +2,8 @@
 /* TITLE:        FFS claims extraction — bene-year utilization   */
 /*               and observed Part A/B cost-sharing              */
 /* PROJECT:      ma-search-costs                                 */
-/* INPUT:        MEDPAR.MEDPAR_<yyyy>                            */
+/* INPUT:        RIF<yyyy>.INPATIENT_CLAIMS_<MM>                 */
+/*               RIF<yyyy>.SNF_CLAIMS_<MM>                       */
 /*               RIF<yyyy>.HHA_CLAIMS_<MM>     +HHA_REVENUE_<MM>  */
 /*               RIF<yyyy>.OUTPATIENT_CLAIMS_<MM> +OUTPATIENT_REVENUE_<MM> */
 /*               RIF<yyyy>.BCARRIER_LINE_<MM>                    */
@@ -10,20 +11,20 @@
 /* OUTPUT:       PL027710.ffs_util_panel  (BENE_ID x year)        */
 /*               PL027710.ffs_util_<svc>   (per-svc stacked)      */
 /* ------------------------------------------------------------ */
-/* Mirrors script 4 for the FFS side. DME omitted: no DME on the */
-/* seat (not in RIF, not in MEDPAR). Drop matching DME columns   */
-/* from script 4 if you want symmetric output.                   */
+/* Mirrors script 4 for the FFS side. DME omitted (not on seat). */
 /* ------------------------------------------------------------ */
-/* Variable names verified against ResDAC RIF documentation:     */
-/* MEDPAR file, Carrier RIF, Outpatient RIF, HHA RIF (2026-05-06).*/
+/* Variable names verified against existing seat-tested code in  */
+/* healthcare-vi/physician-agency/physician-hospital-VI/         */
+/* data-code/8_Episodes.sas (IP, SNF, HHA, OP, Carrier) and      */
+/* against ResDAC RIF documentation.                             */
 /* ------------------------------------------------------------ */
 
 
 /* ============================================================ */
 /* Helper: stack 12 monthly RIF files for one service+year       */
 /* ------------------------------------------------------------ */
-/* Used for HHA and Outpatient only (smaller files). Carrier     */
-/* line is too big to stack annually; aggregate per-month below. */
+/* Used for IP, SNF, HHA, OP. Carrier line is too big to stack   */
+/* annually; aggregate per-month below.                          */
 /* ============================================================ */
 
 %MACRO stack_rif(file_root, year);
@@ -51,36 +52,65 @@ QUIT;
 
 
 /* ============================================================ */
-/* 5b. IP + SNF — MEDPAR (annual, one row per stay)              */
+/* 5b. IP — INPATIENT_CLAIMS (12-month stack)                    */
 /* ------------------------------------------------------------ */
-/* SS_LS_SNF_IND_CD = "S" -> SNF; everything else -> IP.         */
-/* IP cost-sharing: deductible + Part A coinsurance + blood.     */
-/* SNF cost-sharing: Part A coinsurance only (no deductible).    */
+/* Interim bills: a single stay may span multiple monthly claims */
+/* sharing one CLM_ADMSN_DT. COUNT DISTINCT CLM_ADMSN_DT counts  */
+/* stays correctly; SUM(CLM_UTLZTN_DAY_CNT) and SUM(NCH_IP_TOT_  */
+/* DDCTN_AMT) sum across interim bills correctly.                */
+/* NCH_IP_TOT_DDCTN_AMT = bene IP deductible + Part A coins +    */
+/* blood deductible (single combined field per CMS).             */
 /* ============================================================ */
 
-%MACRO ip_snf_util(year);
+%MACRO ip_util(year);
+    %stack_rif(INPATIENT_CLAIMS, &year);
     PROC SQL;
-        CREATE TABLE WORK.ipsnf_&year AS
+        CREATE TABLE WORK.ip_&year AS
         SELECT a.BENE_ID, &year AS year,
-               SUM(SS_LS_SNF_IND_CD NE "S")                                AS n_ip_stays,
-               SUM(CASE WHEN SS_LS_SNF_IND_CD NE "S" THEN UTLZTN_DAY_CNT ELSE 0 END)  AS n_ip_days,
-               SUM(SS_LS_SNF_IND_CD = "S")                                 AS n_snf_stays,
-               SUM(CASE WHEN SS_LS_SNF_IND_CD = "S" THEN UTLZTN_DAY_CNT ELSE 0 END)   AS n_snf_days,
-               SUM(BENE_IP_DDCTBL_AMT + BENE_PTA_COINSRNC_AMT + BENE_BLOOD_DDCTBL_AMT) AS c_ipsnf
-        FROM MEDPAR.MEDPAR_&year AS a
+               COUNT(DISTINCT a.CLM_ADMSN_DT) AS n_ip_stays,
+               SUM(a.CLM_UTLZTN_DAY_CNT)      AS n_ip_days,
+               SUM(a.NCH_IP_TOT_DDCTN_AMT)    AS c_ip
+        FROM WORK.INPATIENT_CLAIMS_stack_&year AS a
         INNER JOIN WORK.ffs_benes AS b
             ON a.BENE_ID = b.BENE_ID AND b.year = &year
         GROUP BY a.BENE_ID;
     QUIT;
-    %row_count(WORK.ipsnf_&year, IP+SNF &year);
-%MEND ip_snf_util;
+    PROC DELETE DATA=WORK.INPATIENT_CLAIMS_stack_&year; RUN;
+    %row_count(WORK.ip_&year, IP &year);
+%MEND ip_util;
 
 
 /* ============================================================ */
-/* 5c. HHA — RIF, monthly stack + revenue join                   */
+/* 5c. SNF — SNF_CLAIMS (12-month stack)                          */
 /* ------------------------------------------------------------ */
-/* Visit count = SUM(REV_CNTR_UNIT_CNT) from revenue file.       */
-/* HHA carries no FFS cost-sharing -> c_hha set to 0.            */
+/* Same field structure as INPATIENT_CLAIMS. Part A cost-sharing */
+/* in NCH_IP_TOT_DDCTN_AMT.                                      */
+/* ============================================================ */
+
+%MACRO snf_util(year);
+    %stack_rif(SNF_CLAIMS, &year);
+    PROC SQL;
+        CREATE TABLE WORK.snf_&year AS
+        SELECT a.BENE_ID, &year AS year,
+               COUNT(DISTINCT a.CLM_ADMSN_DT) AS n_snf_stays,
+               SUM(a.CLM_UTLZTN_DAY_CNT)      AS n_snf_days,
+               SUM(a.NCH_IP_TOT_DDCTN_AMT)    AS c_snf
+        FROM WORK.SNF_CLAIMS_stack_&year AS a
+        INNER JOIN WORK.ffs_benes AS b
+            ON a.BENE_ID = b.BENE_ID AND b.year = &year
+        GROUP BY a.BENE_ID;
+    QUIT;
+    PROC DELETE DATA=WORK.SNF_CLAIMS_stack_&year; RUN;
+    %row_count(WORK.snf_&year, SNF &year);
+%MEND snf_util;
+
+
+/* ============================================================ */
+/* 5d. HHA — HHA_CLAIMS + HHA_REVENUE                             */
+/* ------------------------------------------------------------ */
+/* Visit count = SUM(REV_CNTR_UNIT_CNT) per CLM_ID.              */
+/* HHA carries no FFS bene cost-sharing (per existing pipeline   */
+/* in 8_Episodes.sas: HHA_Spend = CLM_PMT + primary payer only). */
 /* ============================================================ */
 
 %MACRO hha_util(year);
@@ -116,10 +146,11 @@ QUIT;
 
 
 /* ============================================================ */
-/* 5d. OP — RIF, monthly stack, ER flag from REV_CNTR 045X       */
+/* 5e. OP — OUTPATIENT_CLAIMS + OUTPATIENT_REVENUE                */
 /* ------------------------------------------------------------ */
-/* OP cost-sharing: Part B deductible + Part B coinsurance       */
-/* (claim-level NCH_* fields on the base claim file).            */
+/* ER flag from REV_CNTR codes 0450-0459. Bene cost-sharing on   */
+/* the base claim file: NCH_BENE_PTB_DDCTBL_AMT +                */
+/* NCH_BENE_PTB_COINSRNC_AMT (matches 8_Episodes.sas line 108).  */
 /* ============================================================ */
 
 %MACRO op_util(year);
@@ -155,25 +186,26 @@ QUIT;
 
 
 /* ============================================================ */
-/* 5e. Carrier — RIF line file, per-month aggregation            */
+/* 5f. Carrier — BCARRIER_LINE, per-month aggregation             */
 /* ------------------------------------------------------------ */
 /* Annual stack of BCARRIER_LINE is too big for WORK. Aggregate  */
 /* monthly to FFS benes, then re-aggregate to bene-year.         */
 /* PCP specialty codes per CMS: 01,08,11,38.                     */
-/* Cost-sharing: line-level Part B deductible + coinsurance.     */
+/* Cost-sharing matches 8_Episodes.sas line 163:                 */
+/*   LINE_COINSRNC_AMT + LINE_BENE_PTB_DDCTBL_AMT                */
 /* ============================================================ */
 
 %MACRO car_month(year, mm);
     PROC SQL;
         CREATE TABLE WORK.car_&year._m&mm AS
         SELECT a.BENE_ID,
-               COUNT(*)                                                AS n_lines,
+               COUNT(*)                                            AS n_lines,
                SUM(CASE WHEN PRVDR_SPCLTY IN ("01","08","11","38")
-                        THEN 1 ELSE 0 END)                             AS n_pcp,
+                        THEN 1 ELSE 0 END)                         AS n_pcp,
                SUM(CASE WHEN PRVDR_SPCLTY NOT IN ("01","08","11","38")
                             AND PRVDR_SPCLTY NE ""
-                        THEN 1 ELSE 0 END)                             AS n_spec,
-               SUM(LINE_BENE_PTB_DDCTBL_AMT + LINE_COINSRNC_AMT)       AS c
+                        THEN 1 ELSE 0 END)                         AS n_spec,
+               SUM(LINE_COINSRNC_AMT + LINE_BENE_PTB_DDCTBL_AMT)   AS c
         FROM RIF&year..BCARRIER_LINE_&mm AS a
         INNER JOIN WORK.ffs_benes AS b
             ON a.BENE_ID = b.BENE_ID AND b.year = &year
@@ -210,12 +242,13 @@ QUIT;
 
 
 /* ============================================================ */
-/* 5f. Run all macros across 4 years, then stack per service     */
+/* 5g. Run all macros across 4 years, then stack per service     */
 /* ============================================================ */
 
 %MACRO pull_all_ffs;
     %DO yr = &mcbs_start %TO &mcbs_end;
-        %ip_snf_util(&yr);
+        %ip_util(&yr);
+        %snf_util(&yr);
         %hha_util(&yr);
         %op_util(&yr);
         %car_util(&yr);
@@ -233,31 +266,33 @@ QUIT;
     RUN;
     %row_count(PL027710.ffs_util_&svc, ffs_util_&svc);
 %MEND stack_svc_ffs;
-%stack_svc_ffs(ipsnf);
+%stack_svc_ffs(ip);
+%stack_svc_ffs(snf);
 %stack_svc_ffs(hha);
 %stack_svc_ffs(op);
 %stack_svc_ffs(car);
 
 
 /* ============================================================ */
-/* 5g. Combined wide bene-year panel + observed total cost-share */
+/* 5h. Combined wide bene-year panel + observed total cost-share */
 /* ============================================================ */
 
 PROC SQL;
     CREATE TABLE WORK.spine AS
-    SELECT BENE_ID, year FROM PL027710.ffs_util_ipsnf UNION
-    SELECT BENE_ID, year FROM PL027710.ffs_util_hha   UNION
-    SELECT BENE_ID, year FROM PL027710.ffs_util_op    UNION
+    SELECT BENE_ID, year FROM PL027710.ffs_util_ip   UNION
+    SELECT BENE_ID, year FROM PL027710.ffs_util_snf  UNION
+    SELECT BENE_ID, year FROM PL027710.ffs_util_hha  UNION
+    SELECT BENE_ID, year FROM PL027710.ffs_util_op   UNION
     SELECT BENE_ID, year FROM PL027710.ffs_util_car;
 QUIT;
 
 PROC SQL;
     CREATE TABLE PL027710.ffs_util_panel AS
     SELECT s.BENE_ID, s.year,
-           COALESCE(ipsnf.n_ip_stays,    0)  AS n_ip_stays,
-           COALESCE(ipsnf.n_ip_days,     0)  AS n_ip_days,
-           COALESCE(ipsnf.n_snf_stays,   0)  AS n_snf_stays,
-           COALESCE(ipsnf.n_snf_days,    0)  AS n_snf_days,
+           COALESCE(ip.n_ip_stays,       0)  AS n_ip_stays,
+           COALESCE(ip.n_ip_days,        0)  AS n_ip_days,
+           COALESCE(snf.n_snf_stays,     0)  AS n_snf_stays,
+           COALESCE(snf.n_snf_days,      0)  AS n_snf_days,
            COALESCE(hha.n_hha_episodes,  0)  AS n_hha_episodes,
            COALESCE(hha.n_hha_visits,    0)  AS n_hha_visits,
            COALESCE(op.n_op_visits,      0)  AS n_op_visits,
@@ -265,26 +300,29 @@ PROC SQL;
            COALESCE(car.n_car_lines,     0)  AS n_car_lines,
            COALESCE(car.n_car_pcp_lines, 0)  AS n_car_pcp_lines,
            COALESCE(car.n_car_spec_lines,0)  AS n_car_spec_lines,
-           COALESCE(ipsnf.c_ipsnf, 0)
-         + COALESCE(hha.c_hha,    0)
-         + COALESCE(op.c_op,      0)
-         + COALESCE(car.c_car,    0)         AS c_observed_ffs
-    FROM WORK.spine                    AS s
-    LEFT JOIN PL027710.ffs_util_ipsnf  AS ipsnf
-        ON s.BENE_ID = ipsnf.BENE_ID AND s.year = ipsnf.year
-    LEFT JOIN PL027710.ffs_util_hha    AS hha
-        ON s.BENE_ID = hha.BENE_ID   AND s.year = hha.year
-    LEFT JOIN PL027710.ffs_util_op     AS op
-        ON s.BENE_ID = op.BENE_ID    AND s.year = op.year
-    LEFT JOIN PL027710.ffs_util_car    AS car
-        ON s.BENE_ID = car.BENE_ID   AND s.year = car.year ;
+           COALESCE(ip.c_ip,   0)
+         + COALESCE(snf.c_snf, 0)
+         + COALESCE(hha.c_hha, 0)
+         + COALESCE(op.c_op,   0)
+         + COALESCE(car.c_car, 0)            AS c_observed_ffs
+    FROM WORK.spine                  AS s
+    LEFT JOIN PL027710.ffs_util_ip   AS ip
+        ON s.BENE_ID = ip.BENE_ID  AND s.year = ip.year
+    LEFT JOIN PL027710.ffs_util_snf  AS snf
+        ON s.BENE_ID = snf.BENE_ID AND s.year = snf.year
+    LEFT JOIN PL027710.ffs_util_hha  AS hha
+        ON s.BENE_ID = hha.BENE_ID AND s.year = hha.year
+    LEFT JOIN PL027710.ffs_util_op   AS op
+        ON s.BENE_ID = op.BENE_ID  AND s.year = op.year
+    LEFT JOIN PL027710.ffs_util_car  AS car
+        ON s.BENE_ID = car.BENE_ID AND s.year = car.year ;
 QUIT;
 PROC DELETE DATA=WORK.spine; RUN;
 %row_count(PL027710.ffs_util_panel, ffs_util_panel);
 
 
 /* ============================================================ */
-/* 5h. Diagnostics                                                */
+/* 5i. Diagnostics                                                */
 /* ============================================================ */
 
 TITLE "FFS utilization — distinct benes by year";
@@ -317,10 +355,11 @@ PROC DELETE DATA=WORK.ffs_benes; RUN;
 
 %MACRO cleanup_ffs;
     %DO yr = &mcbs_start %TO &mcbs_end;
-        PROC DELETE DATA=WORK.ipsnf_&yr; RUN;
-        PROC DELETE DATA=WORK.hha_&yr;   RUN;
-        PROC DELETE DATA=WORK.op_&yr;    RUN;
-        PROC DELETE DATA=WORK.car_&yr;   RUN;
+        PROC DELETE DATA=WORK.ip_&yr;  RUN;
+        PROC DELETE DATA=WORK.snf_&yr; RUN;
+        PROC DELETE DATA=WORK.hha_&yr; RUN;
+        PROC DELETE DATA=WORK.op_&yr;  RUN;
+        PROC DELETE DATA=WORK.car_&yr; RUN;
     %END;
 %MEND cleanup_ffs;
 %cleanup_ffs;
