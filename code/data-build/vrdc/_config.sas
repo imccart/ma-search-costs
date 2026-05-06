@@ -24,7 +24,11 @@
 /*   MBSF.MBSF_ABCD_<yr>                                          */
 /*   MCBS<yr>.SURVEY_<SEGMENT>_<yr>                               */
 /*   MCBS<yr>.COSTUSE_<SEGMENT>_<yr>                              */
-/*   MCBSXWLK.<dataset>           (verify name on first run)      */
+/*   MCBSXWLK.MCBSXWLK             (BASE_ID -> BENE_ID xwalk)     */
+/*   ENRFPL<yr>.<svc>_BASE_ENC                                    */
+/*   ENRFPL<yr>.<svc>_LINE_ENC     (carrier, dme)                 */
+/*   ENRFPL<yr>.<svc>_REVENUE_ENC  (op, snf, hha, ip)             */
+/*       <svc> in {IP, SNF, HHA, OP, CARRIER, DME}, <yr> 15..18   */
 /*                                                                */
 /* Do NOT add any LIBNAME statements. If a library appears       */
 /* undefined in the SAS log, that's a seat-config issue — fix    */

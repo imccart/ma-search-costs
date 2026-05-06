@@ -18,11 +18,14 @@
 /* directories).                                                  */
 /*                                                                */
 /* Pipeline:                                                      */
-/*   1. _config.sas              libnames, year ranges, macros   */
-/*   2. 1-extract-mbsf.sas       MBSF 2014-2018 panel            */
-/*   3. 2-extract-mcbs.sas       MCBS 2015-2018 multi-segment    */
-/*   4. 3-build-bene-panel.sas   MCBS x MCBSXWLK x MBSF + lag    */
-/*   5. 4-export-bene-panel.sas  CSV for R analysis              */
+/*   1. _config.sas                  libnames, year ranges, macros */
+/*   2. 1-extract-mbsf.sas           MBSF 2014-2018 panel          */
+/*   3. 2-extract-mcbs.sas           MCBS 2015-2018 multi-segment  */
+/*   4. 3-build-bene-panel.sas       MCBS x MCBSXWLK x MBSF + lag  */
+/*   5. 4-extract-ma-encounters.sas  MA encounter utilization      */
+/*                                                                  */
+/* CSV export off the seat is done manually via the CMS clearance  */
+/* protocol — there is no in-pipeline export script.                */
 /* ------------------------------------------------------------ */
 
 /* Edit this to match where you placed the .sas files on the seat.   */
@@ -35,6 +38,6 @@
 %INCLUDE "&project_root/1-extract-mbsf.sas";
 %INCLUDE "&project_root/2-extract-mcbs.sas";
 %INCLUDE "&project_root/3-build-bene-panel.sas";
-%INCLUDE "&project_root/4-export-bene-panel.sas";
+%INCLUDE "&project_root/4-extract-ma-encounters.sas";
 
 %PUT NOTE: VRDC data-build complete ;

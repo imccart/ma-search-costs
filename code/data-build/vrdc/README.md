@@ -6,13 +6,14 @@ SAS extraction pipeline for the structural-search MCBS analysis. Runs inside the
 
 ```
 _config.sas
-1-extract-mbsf.sas        MBSF 2014-2018 -> PL027710.bene_mbsf_panel
-2-extract-mcbs.sas        MCBS 2015-2018 -> PL027710.mcbs_panel
-3-build-bene-panel.sas    join via MCBSXWLK -> PL027710.bene_panel
-4-export-bene-panel.sas   write CSV to /workspace/pl027710/export/
+1-extract-mbsf.sas             MBSF 2014-2018 -> PL027710.bene_mbsf_panel
+2-extract-mcbs.sas             MCBS 2015-2018 -> PL027710.mcbs_panel
+3-build-bene-panel.sas         join via MCBSXWLK -> PL027710.bene_panel
+4-extract-ma-encounters.sas    ENRFPL15-18 -> PL027710.ma_util_panel
 ```
 
-Use `_build-vrdc.sas` as the master driver.
+Use `_build-vrdc.sas` as the master driver. CSV export off the seat is done
+manually via the CMS clearance protocol — there is no in-pipeline export script.
 
 ## VRDC seat conventions
 
@@ -28,15 +29,18 @@ Use `_build-vrdc.sas` as the master driver.
 
 ## On-disk output
 
-After a successful run:
+After a successful run, the writable library `PL027710` holds:
 
 ```
-/workspace/pl027710/export/
-  bene_panel.csv               (analysis-ready, one row per MCBS bene-year)
-  bene_panel_dictionary.csv    (column metadata: name, type, length, label)
+PL027710.bene_mbsf_panel        MBSF 2014-2018 (one row per BENE_ID-year)
+PL027710.mcbs_panel             MCBS 2015-2018 (one row per BASE_ID-year)
+PL027710.bene_panel             MCBS x MBSF, lagged plan, incumbent flag
+PL027710.ma_util_panel          MA encounter utilization (BENE_ID x year)
+PL027710.ma_util_<svc>          per-service stacked panels (ip/snf/hha/op/car/dme)
 ```
 
-These stay inside the VRDC enclave; CSV exports off-VRDC require CMS clearance review.
+Datasets stay inside the VRDC enclave; CSV exports off-VRDC require CMS
+clearance review and are done manually outside this pipeline.
 
 ## Approved DUA scope
 
