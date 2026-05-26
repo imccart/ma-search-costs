@@ -115,7 +115,29 @@ bene <- bene %>%
 
 panel <- fread(panel_path,
   colClasses = c(county_fips = "character"))
-panel[, c("mean_cost", "var_cost", "sd_cost") := NULL]
+
+# Collapse the two FFS variants into a single FFS outside option so an FFS
+# chooser's chosen_plan_id == "FFS" matches the choice set. omega-weighted
+# population cost, mirroring analysis/structural/1-load-panel.R (0.25 bare +
+# 0.75 supp). The choice model reads only plan_kind/mean_cost/var_cost for FFS
+# (utility = -alpha*EC - delta*Var + xi_FFS); MA-only attributes are NA for FFS
+# and never used. Match bare/supp by pattern so the exact suffix doesn't matter.
+omega_bare <- 0.25
+ffs_one <- panel[plan_kind == "FFS", .(
+  plan_id   = "FFS",
+  plan_kind = "FFS",
+  mean_cost = omega_bare * mean_cost[!grepl("supp", plan_id)] +
+              (1 - omega_bare) * mean_cost[grepl("supp", plan_id)],
+  var_cost  = omega_bare * var_cost[!grepl("supp", plan_id)] +
+              (1 - omega_bare) * var_cost[grepl("supp", plan_id)]
+), by = .(county_fips, year)]
+panel <- rbind(panel[plan_kind != "FFS"], ffs_one, fill = TRUE)
+
+# Keep the population cost as a fallback column. MA plans get bene-specific EC
+# from script 0 below; the FFS row keeps this population value (script 0 projects
+# MA plans only).
+setnames(panel, c("mean_cost", "var_cost"), c("mean_cost_pop", "var_cost_pop"))
+if ("sd_cost" %in% names(panel)) panel[, sd_cost := NULL]
 message(sprintf("Loaded structural_panel.csv: %d rows, %d unique plan-county-years (dropped population cost columns)",
                 nrow(panel), nrow(unique(panel[, .(county_fips, year, plan_id)]))))
 
@@ -157,6 +179,12 @@ bcp <- merge(bcp, ec, by = c("BENE_ID", "year", "plan_id"), all.x = TRUE)
 message(sprintf("After EC merge: %d rows (was %d). Bene-plan pairs without EC: %d",
                 nrow(bcp), n_before, sum(is.na(bcp$mean_cost))))
 
+# Bene-specific EC for MA; fall back to population cost for the FFS row (and any
+# MA bene-plan pair script 0 could not project).
+bcp[, mean_cost := fifelse(is.na(mean_cost), mean_cost_pop, mean_cost)]
+bcp[, var_cost  := fifelse(is.na(var_cost),  var_cost_pop,  var_cost)]
+bcp[, c("mean_cost_pop", "var_cost_pop") := NULL]
+
 
 # ---------------------------------------------------------------------------
 # 5. Bene × plan attributes
@@ -164,7 +192,10 @@ message(sprintf("After EC merge: %d rows (was %d). Bene-plan pairs without EC: %
 
 bcp[, `:=`(
   is_chosen      = as.integer(plan_id == chosen_plan_id),
-  incumbent_bene = as.integer(plan_id == prior_plan_id & prior_plan_id != ""),
+  # Clean 0/1: a bene with no observed prior plan (first panel year, all of
+  # 2015, or a missing/"NA_NA" prior) is a non-incumbent, never NA. Leaving it
+  # NA propagates through max(., na.rm=TRUE) to an all-NA bene-year downstream.
+  incumbent_bene = as.integer(!prior_plan_id %in% c(NA, "", "NA_NA") & plan_id == prior_plan_id),
   sd_cost        = sqrt(pmax(var_cost, 0)),
   # Broker density per 1k Medicare eligibles in the county-year. ins_brokers_estab
   # (count) and total_eligibles join from structural_panel.csv at the county-year
@@ -182,9 +213,13 @@ message(sprintf("Chosen-plan match: %d benes with exactly 1 chosen, %d with 0, %
                 n_one, n_zero, n_multi))
 
 if (n_zero > 0) {
-  message("Dropping benes whose chosen plan is not in the public panel ",
+  message("Dropping bene-years whose chosen plan is not in the public panel ",
           "(typically SNPs / EGHPs / mid-year-only plans excluded upstream).")
-  bcp <- bcp[BASE_ID %in% n_chosen[n_chosen == 1L, BASE_ID]]
+  # Drop the offending (BASE_ID, year) pairs, NOT whole benes — a bene can have
+  # a valid chosen plan in one year and an unmatched plan in another (MCBS is a
+  # rotating panel). A BASE_ID-only filter would leave the unmatched bene-years
+  # in bcp with zero chosen plans, surfacing as NA choice_idx in script 2.
+  bcp <- bcp[n_chosen[n_chosen == 1L, .(BASE_ID, year)], on = c("BASE_ID", "year"), nomatch = NULL]
 }
 if (n_multi > 0) {
   stop(sprintf("%d benes have multiple chosen-plan matches. Investigate.", n_multi))

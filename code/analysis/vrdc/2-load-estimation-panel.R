@@ -53,6 +53,17 @@ bene <- bcp[, .(
     by = c("BASE_ID", "year")
   )
 
+# Keep only bene-years whose chosen plan is actually in the choice set (exactly
+# one is_chosen row in bcp). Bene-years with no in-panel chosen plan (SNPs /
+# EGHPs / employer or mid-year plans absent from the public landscape) cannot
+# enter the discrete-choice likelihood, so exclude them from all moments. Script
+# 1 intends to drop these; this is a defensive backstop at the bene level.
+valid_by <- bcp[, .(nch = sum(is_chosen)), by = .(BASE_ID, year)][nch == 1L, .(BASE_ID, year)]
+n_pre_choice <- nrow(bene)
+bene <- bene[valid_by, on = c("BASE_ID", "year"), nomatch = NULL]
+message(sprintf("Dropped %d bene-years with no in-panel chosen plan (%d remain)",
+                n_pre_choice - nrow(bene), nrow(bene)))
+
 message(sprintf("Bene summary: %d bene-year rows, %d unique benes",
                 nrow(bene), uniqueN(bene$BASE_ID)))
 
@@ -60,6 +71,14 @@ message(sprintf("Bene summary: %d bene-year rows, %d unique benes",
 # ---------------------------------------------------------------------------
 # Survey design declaration
 # ---------------------------------------------------------------------------
+
+# Drop bene-years without a valid full-sample weight — they can't enter
+# population-weighted moments (NA weight = not in the MCBS cross-sectional
+# full-sample universe). svydesign errors on NA weights otherwise.
+n_pre <- nrow(bene)
+bene <- bene[!is.na(wgt_full_sample) & wgt_full_sample > 0]
+message(sprintf("Dropped %d bene-years with missing/zero full-sample weight (%d remain)",
+                n_pre - nrow(bene), nrow(bene)))
 
 bene_design <- svydesign(
   ids     = ~variance_psu,
@@ -107,15 +126,24 @@ bene[market_keys, on = c("county_fips", "year"), market_id := i.market_id]
 # Stored as a column on `bene` (not a separate vector) so downstream
 # scripts can reference `bene$choice_idx[i]` directly.
 choice_long <- bcp[is_chosen == 1, .(BASE_ID, year, plan_id, market_id)]
-setkey(choice_long, BASE_ID, year)
+
+# Attach each bene-year's chosen plan_id via a join-update. Do NOT look up
+# choice_long inside the vapply below: choice_long carries its own BASE_ID/year
+# columns, which shadow bene's in the i-expression, so a nested
+# choice_long[.(BASE_ID[i], year[i]), ...] silently indexes choice_long's own
+# rows by i rather than matching bene's keys (such a lookup returns
+# nrow(choice_long) values, not one per bene). Join first, then index.
+bene[choice_long, on = c("BASE_ID", "year"), chosen_pid := i.plan_id]
 
 bene[, choice_idx := vapply(seq_len(.N), function(i) {
-  m   <- market_id[i]
-  pid <- choice_long[.(BASE_ID[i], year[i]), plan_id, mult = "first"]
-  which(markets[[m]]$plan_id == pid)[1]
+  which(markets[[market_id[i]]]$plan_id == chosen_pid[i])[1]
 }, integer(1))]
 
 bene_to_market <- bene$market_id
+
+# Flag bene-years with an observed prior-year plan, so incumbency (an inertia
+# regressor) is identified only where last year's plan is actually known.
+bene[, has_prior_year := as.integer(!prior_plan_id %in% c(NA, "", "NA_NA"))]
 
 stopifnot(!any(is.na(bene$choice_idx)))
 message(sprintf("Chosen-plan index resolved for all %d benes", nrow(bene)))
@@ -132,4 +160,7 @@ message(sprintf("  N bene-plan rows (long)   : %d", nrow(bcp)))
 message(sprintf("  Years                     : %s", paste(sort(unique(bene$year)), collapse = ", ")))
 message(sprintf("  Pct MA (admin)            : %.1f%%", 100 * mean(bene$is_ma_admin == 1)))
 message(sprintf("  Pct searched              : %.1f%%", 100 * mean(bene$searched_obs == 1, na.rm = TRUE)))
-message(sprintf("  Pct incumbent (MA last yr): %.1f%%", 100 * mean(bene$incumbent_bene_year == 1)))
+message(sprintf("  Bene-years w/ prior plan  : %d (%.1f%%)",
+                bene[has_prior_year == 1L, .N], 100 * mean(bene$has_prior_year == 1)))
+message(sprintf("  Pct incumbent (of w/ prior): %.1f%%",
+                100 * mean(bene[has_prior_year == 1L, incumbent_bene_year] == 1)))

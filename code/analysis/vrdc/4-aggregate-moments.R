@@ -14,11 +14,16 @@
 m1_obs <- weighted.mean(bene$searched_obs, w = bene$wgt_full_sample, na.rm = TRUE)
 
 # M2: weighted mean of FFS choice (using MBSF admin truth)
-m2_obs <- weighted.mean(bene$is_ffs_mbsf, w = bene$wgt_full_sample, na.rm = TRUE)
+m2_obs <- weighted.mean(bene$is_ffs_admin, w = bene$wgt_full_sample, na.rm = TRUE)
 
-# M3: among MA enrollees, weighted mean of incumbent_bene
-ma_only <- bene %>% filter(is_ffs_mbsf == 0)
-m3_obs <- weighted.mean(ma_only$incumbent_bene, w = ma_only$wgt_full_sample, na.rm = TRUE)
+# M3: among MA enrollees with an observed prior plan, the fraction who CHOSE
+# their incumbent (prior-year) plan. This matches the predicted side below,
+# which is P(choose incumbent | MA). Note `incumbent_bene_year` on `bene` flags
+# whether the prior plan is AVAILABLE in the market, not whether it was chosen,
+# so it is the wrong observed analog for this moment.
+ma_only <- bene %>% filter(is_ffs_admin == 0, has_prior_year == 1L)
+m3_obs <- weighted.mean(as.integer(ma_only$chosen_pid == ma_only$prior_plan_id),
+                        w = ma_only$wgt_full_sample, na.rm = TRUE)
 
 message(sprintf("Observed moments:\n  M1 searched rate     : %.3f", m1_obs))
 message(sprintf("  M2 FFS share         : %.3f", m2_obs))
@@ -47,8 +52,11 @@ compute_aggregate_moments <- function(theta) {
     ffs_idx <- which(mkt$plan_kind == "FFS")
     is_ffs_pred[i] <- p[ffs_idx]
 
-    # Incumbent-pick probability: weight prob mass on incumbent plans
-    inc <- mkt$incumbent
+    # Incumbent-pick probability: weight prob mass on incumbent plans.
+    # Incumbency is bene-specific (it depends on THIS bene's prior plan), so
+    # build the flag from bene$prior_plan_id[i] against this market's plans —
+    # not from a market-level column.
+    inc <- as.integer(mkt$plan_id == bene$prior_plan_id[i])
     inc[is.na(inc)] <- 0
     inc[ffs_idx]  <- 0  # FFS is not an MA-incumbent
     p_inc_among_ma <- if (sum(p[mkt$plan_kind == "MA"]) > 0) {
@@ -60,9 +68,10 @@ compute_aggregate_moments <- function(theta) {
 
   m1_pred <- weighted.mean(searched_pred, w = bene$wgt_full_sample)
   m2_pred <- weighted.mean(is_ffs_pred,   w = bene$wgt_full_sample)
+  ma_prior <- bene$is_ffs_admin == 0 & bene$has_prior_year == 1L
   m3_pred <- weighted.mean(
-    incumbent_choice_pred[bene$is_ffs_mbsf == 0],
-    w = bene$wgt_full_sample[bene$is_ffs_mbsf == 0]
+    incumbent_choice_pred[ma_prior],
+    w = bene$wgt_full_sample[ma_prior]
   )
 
   c(M1 = m1_pred - m1_obs,

@@ -10,7 +10,9 @@
 # Cost-sharing schedule comes from plan_county_benefits.csv (uploaded local).
 #
 # Inputs (RStudio project root = ma-search/):
-#   data/input/plan_county_benefits.csv     uploaded local PBP cost-sharing
+#   data/input/plan_county_benefits.zip     uploaded local PBP cost-sharing
+#                                           (zipped due to upload size cap;
+#                                           streamed via unzip -p, not extracted)
 #   data/input/bene_panel.csv               SAS-exported bene-year panel (script 3)
 #   data/input/ma_util_panel.csv            SAS-exported MA utilization (script 4)
 #   data/input/ffs_util_panel.csv           SAS-exported FFS utilization (script 5)
@@ -35,7 +37,7 @@ pacman::p_load(data.table)
 # Inputs
 # ---------------------------------------------------------------------------
 
-pbp_path      <- "data/input/plan_county_benefits.csv"
+pbp_path      <- "data/input/plan_county_benefits.zip"
 bene_path     <- "data/input/bene_panel.csv"
 ma_util_path  <- "data/input/ma_util_panel.csv"
 ffs_util_path <- "data/input/ffs_util_panel.csv"
@@ -74,7 +76,7 @@ per_event <- function(copay, coins_pct, allowed) {
 # already keyed correctly for the bene-plan join.
 # ---------------------------------------------------------------------------
 
-pbp <- fread(pbp_path, colClasses = c(county_fips = "character"))
+pbp <- fread(cmd = paste("unzip -p", pbp_path), colClasses = c(county_fips = "character"))
 pbp[, plan_id := paste0(contractid, "_", planid)]
 
 pbp[, `:=`(
