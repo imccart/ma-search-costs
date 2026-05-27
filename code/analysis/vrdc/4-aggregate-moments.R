@@ -44,8 +44,9 @@ compute_aggregate_moments <- function(theta) {
   for (i in seq_len(nrow(bene))) {
     mid <- bene$market_id[i]
     mkt <- markets[[mid]]
-    v   <- compute_market_utility(mkt, th)
-    sal <- compute_salience(mkt, th)
+    v    <- compute_market_utility(mkt, th)
+    prom <- compute_market_prominence(mkt)
+    sal  <- compute_salience(mkt, prom, bene[i, ], th)
     K_star <- components$K_star[i]
     p <- compute_bene_choice_prob(mkt, v, sal, K_star)
 
@@ -85,12 +86,22 @@ compute_aggregate_moments <- function(theta) {
 # weighting between the two is governed by LAMBDA — set to 0 for pure
 # MLE, set to a large number to put most weight on aggregate moments.
 
-LAMBDA <- 1e3   # default: aggregate moments matter at survey-weighted scale
+LAMBDA <- 1e2   # weight on the moment block; tune so M1/M2/M3 are matched
+                # (see note below). On the per-weight-mean scale, both blocks
+                # are O(1), so LAMBDA is now interpretable.
+
+# Sum of survey weights, used to normalize the likelihood to a per-weight mean.
+# Without this the weighted log-likelihood is ~1e8 (weights sum to tens of
+# millions) and dwarfs the moment penalty by ~6 orders of magnitude, so the
+# moments carry no weight and the optimizer collapses to pure MLE (search cost
+# -> 0, predicted search rate -> 1, lambdas pinned at 0). Dividing puts -ll on
+# an O(1) scale comparable to LAMBDA * sum(m^2).
+W_SUM <- sum(bene$wgt_full_sample)
 
 compute_combined_objective <- function(theta) {
-  ll <- compute_individual_loglik(theta)
+  ll <- compute_individual_loglik(theta) / W_SUM   # per-weight mean log-lik
   m  <- compute_aggregate_moments(theta)
 
-  # Negative log-likelihood + lambda * sum-of-squared-moments
+  # Negative (normalized) log-likelihood + lambda * sum-of-squared-moments
   -ll + LAMBDA * sum(m^2)
 }

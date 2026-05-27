@@ -81,12 +81,20 @@ compute_market_utility <- function(mkt, th) {
   is_ffs <- mkt$plan_kind == "FFS"
   is_ma  <- !is_ffs
 
-  v[is_ffs] <- - th$alpha * mkt$mean_cost[is_ffs] -
-                 th$delta * mkt$var_cost[is_ffs] +
+  # Scale costs so v is O(1) and exp(v) (here, in compute_K_star, and in the
+  # choice prob) neither over- nor underflows, and so alpha/delta are well
+  # conditioned. EC -> $1,000s; cost variance -> ($1,000s)^2. Unscaled,
+  # mean_cost is ~$900-9,250 but var_cost is ~1.2M-16.6M dollars^2, so
+  # -delta*var_cost dominates and saturates utility.
+  mc <- mkt$mean_cost / 1e3
+  vc <- mkt$var_cost  / 1e6
+
+  v[is_ffs] <- - th$alpha * mc[is_ffs] -
+                 th$delta * vc[is_ffs] +
                  th$xi_FFS
 
-  v[is_ma]  <- - th$alpha * mkt$mean_cost[is_ma] -
-                 th$delta * mkt$var_cost[is_ma] +
+  v[is_ma]  <- - th$alpha * mc[is_ma] -
+                 th$delta * vc[is_ma] +
                  th$beta  * ifelse(is.na(mkt$Star_Rating[is_ma]), 0,
                                    mkt$Star_Rating[is_ma] - 3.5)
 
@@ -185,8 +193,13 @@ compute_bene_choice_prob <- function(mkt, v, sal, K_star) {
     phi[is_ma] <- 0
   }
 
-  # Goeree-style choice probability
-  ev <- exp(v - max(v))
+  # Goeree-style choice probability. Normalize by the max utility among
+  # CONSIDERED plans (phi > 0), not the global max: a non-considered MA plan can
+  # hold the highest v, and normalizing by it makes exp(v_considered - max)
+  # underflow to 0, giving denom = 0 and 0/0 = NaN. FFS always has phi = 1, so
+  # the considered set is never empty.
+  considered <- phi > 0
+  ev <- exp(v - max(v[considered]))
   num <- phi * ev
   denom <- sum(num)
   num / denom

@@ -106,6 +106,18 @@ bene <- bene %>%
     )
   )
 
+# Impute missing search-cost covariates so c_i = exp(gamma'x) is never NA. A
+# single NA covariate makes the entire compute_K_star objective NA (NA * K is NA
+# even at K = 0), so which.max returns nothing and K* has length 0. educ_yrs_dm
+# is demeaned, so NA -> 0 (the mean); adi_dm is a scaled level, so NA -> its
+# non-missing mean. ADI is unmatched for ~24% of benes; educ NA is a handful with
+# education_cat codes outside the lookup. See background/sample-construction.md.
+bene <- bene %>%
+  mutate(
+    educ_yrs_dm = if_else(is.na(educ_yrs_dm), 0, educ_yrs_dm),
+    adi_dm      = if_else(is.na(adi_dm), mean(adi_dm, na.rm = TRUE), adi_dm)
+  )
+
 
 # ---------------------------------------------------------------------------
 # 3. Load plan-attribute panel. Drop population mean_cost / var_cost / sd_cost
