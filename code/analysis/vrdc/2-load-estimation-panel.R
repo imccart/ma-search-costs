@@ -34,7 +34,8 @@ bene_cols <- c(
   "is_dual", "is_partial_dual",
   "has_inet", "has_pc",
   "KVSITWEB_use", "KCHIHELP_help", "KCHIHELP_delegate",
-  "searched_obs",
+  "searched_obs", "act_info", "act_web", "act_phone",
+  "book_read", "book_understood_dm", "tenure_dm",
   "adi_dm",
   "is_ma_admin", "is_ffs_admin",
   "prior_plan_id",
@@ -147,6 +148,27 @@ bene[, has_prior_year := as.integer(!prior_plan_id %in% c(NA, "", "NA_NA"))]
 
 stopifnot(!any(is.na(bene$choice_idx)))
 message(sprintf("Chosen-plan index resolved for all %d benes", nrow(bene)))
+
+
+# ---------------------------------------------------------------------------
+# Bene-specific expected-cost vectors, aligned to each market's plan order
+# ---------------------------------------------------------------------------
+# Utility uses EC[c|i,j], the beneficiary's own expected cost in each plan, not
+# the market-representative value that survives the dedup in `markets`. For each
+# bene-year, look up this beneficiary's mean_cost / var_cost for every plan in
+# their market, in markets[[m]]$plan_id order (the order choice_idx refers to).
+setkey(bcp, BASE_ID, year, plan_id)
+bene_mc <- vector("list", nrow(bene))
+bene_vc <- vector("list", nrow(bene))
+for (i in seq_len(nrow(bene))) {
+  m   <- bene$market_id[i]
+  pid <- markets[[m]]$plan_id
+  rec <- bcp[.(bene$BASE_ID[i], bene$year[i], pid)]
+  bene_mc[[i]] <- rec$mean_cost
+  bene_vc[[i]] <- rec$var_cost
+}
+stopifnot(!any(vapply(bene_mc, function(x) any(is.na(x)), logical(1))))
+message("Built bene-specific EC / Var vectors aligned to market plan order")
 
 
 # ---------------------------------------------------------------------------

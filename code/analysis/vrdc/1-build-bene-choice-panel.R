@@ -91,6 +91,22 @@ bene <- bene %>%
 
     searched_obs = as.integer(searched == 1L | searched == TRUE),
 
+    # The three own-search actions, kept separate (not just their OR `searched`).
+    act_info  = as.integer(tried_find_info      == 1),
+    act_web   = as.integer(visited_medicare_site == 1),
+    act_phone = as.integer(called_800_medicare   == 1),
+    # Ordered handbook reading (KBOKREAD via book_read_amount): 0 none / 1 parts /
+    # 2 thorough. The value->intensity mapping is ASSUMED; verify codes on the seat.
+    book_read = case_when(
+      book_read_amount == 1 ~ 2L,    # read thoroughly  (ASSUMED)
+      book_read_amount == 2 ~ 1L,    # read parts        (ASSUMED)
+      TRUE                  ~ 0L     # not at all / missing
+    ),
+    # Handbook comprehension difficulty (KBOKUNDR) and MA tenure (years enrolled),
+    # demeaned in the imputation block below.
+    book_understood_dm = as.numeric(book_understood),
+    tenure_dm          = as.numeric(madv_years_enrolled),
+
     age_dm      = age - 75,
     log_inc_dm  = log_inc - mean(log_inc, na.rm = TRUE),
     educ_yrs_dm = educ_yrs - mean(educ_yrs, na.rm = TRUE),
@@ -115,7 +131,13 @@ bene <- bene %>%
 bene <- bene %>%
   mutate(
     educ_yrs_dm = if_else(is.na(educ_yrs_dm), 0, educ_yrs_dm),
-    adi_dm      = if_else(is.na(adi_dm), mean(adi_dm, na.rm = TRUE), adi_dm)
+    adi_dm      = if_else(is.na(adi_dm), mean(adi_dm, na.rm = TRUE), adi_dm),
+    # Demean comprehension and tenure; missing (non-readers / FFS) -> 0.
+    book_understood_dm = if_else(is.na(book_understood_dm), 0,
+                          book_understood_dm - mean(book_understood_dm, na.rm = TRUE)),
+    tenure_dm          = if_else(is.na(tenure_dm), 0,
+                          tenure_dm - mean(tenure_dm, na.rm = TRUE)),
+    book_read          = if_else(is.na(book_read), 0L, book_read)
   )
 
 

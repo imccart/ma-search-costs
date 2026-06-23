@@ -15,11 +15,12 @@
 #   data/output/bene_cost_sharing.csv  bene-plan EC[c|i,j] (script 0)
 #   data/output/bene_choice_panel.csv  estimation checkpoint (script 1)
 #   results/vrdc/theta_hat.csv         point estimates + bounds
-#   results/vrdc/fit_diagnostics.csv   predicted vs observed
-#   results/vrdc/se_bootstrap.csv      clustered bootstrap SEs (deferred)
+#   results/vrdc/fit_diagnostics.csv   predicted vs observed (untargeted moments)
+#   results/vrdc/search_by_group.csv   predicted vs observed search rate by group
+#   results/vrdc/standard_errors.csv   observed-information SEs
 
 pacman::p_load(
-  tidyverse, fixest, survey, nloptr, data.table
+  tidyverse, fixest, survey, nloptr, data.table, numDeriv
 )
 
 # 0 builds bene-specific EC[c|i,j] and Var(C|j) by projecting each bene's
@@ -31,12 +32,12 @@ pacman::p_load(
 source("code/analysis/vrdc/0-project-bene-cost-sharing.R")
 source("code/analysis/vrdc/1-build-bene-choice-panel.R")
 source("code/analysis/vrdc/2-load-estimation-panel.R")
-source("code/analysis/vrdc/3-individual-likelihood.R")
-source("code/analysis/vrdc/4-aggregate-moments.R")
-source("code/analysis/vrdc/5-estimate-gmm.R")
-source("code/analysis/vrdc/6-fit-diagnostics.R")
+source("code/analysis/vrdc/3-individual-likelihood.R")   # joint search+choice likelihood
+source("code/analysis/vrdc/5-estimate-mle.R")            # simulated MLE -> theta_hat
+source("code/analysis/vrdc/6-fit-diagnostics.R")         # predicted vs observed
+source("code/analysis/vrdc/7-standard-errors.R")         # observed-information SEs
 
-# Mixture extension is opt-in (deferred to a second pass):
-# source("code/analysis/vrdc/7-mixture-extension.R")
+# Finite-mixture search-cost extension is opt-in (deferred):
+# source("code/analysis/vrdc/8-mixture-extension.R")
 
 cat("\nVRDC analysis complete.\n")

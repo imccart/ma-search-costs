@@ -1,6 +1,6 @@
 # VRDC analysis (`code/analysis/vrdc/`)
 
-R-side individual-level structural estimation. Runs in a Jupyter analytic container (separate from SAS Enterprise Guide) under an RStudio project rooted at `ma-search/`. Reads the bene panel and utilization panels exported manually from SAS, projects bene utilization through PBP cost-sharing schedules, and estimates the Stigler-search model via combined MLE + aggregate moments.
+R-side individual-level structural estimation. Runs in a Jupyter analytic container (separate from SAS Enterprise Guide) under an RStudio project rooted at `ma-search/`. Reads the bene panel and utilization panels exported manually from SAS, projects bene utilization through PBP cost-sharing schedules, and estimates the three-stage search model by joint maximum likelihood over the observed search actions and the plan choice (spec in `agents/model.md`).
 
 ## Run order
 
@@ -8,15 +8,16 @@ R-side individual-level structural estimation. Runs in a Jupyter analytic contai
 _analyze-vrdc.R                master driver
 0-project-bene-cost-sharing.R  bene-specific EC[c|i,j] from util x PBP schedule
 1-build-bene-choice-panel.R    join bene panel x structural_panel + EC, write checkpoint
-2-load-estimation-panel.R      read checkpoint, declare svydesign, build markets[] list
-3-individual-likelihood.R      per-bene Stigler-search choice probability
-4-aggregate-moments.R          survey-weighted aggregate moments
-5-estimate-gmm.R               nloptr SBPLX optimization
-6-fit-diagnostics.R            predicted vs observed by demographic group
-7-mixture-extension.R          finite-mixture c_i (deferred)
+2-load-estimation-panel.R      read checkpoint, build markets[] + bene-specific EC vectors
+3-individual-likelihood.R      joint search+choice likelihood (random effect, switching cost)
+5-estimate-mle.R               simulated MLE (nloptr SBPLX) -> theta_hat
+6-fit-diagnostics.R            predicted vs observed untargeted moments
+7-standard-errors.R            observed-information SEs (numerical Hessian)
+8-mixture-extension.R          finite-mixture c_i (deferred)
 ```
 
-Source `_analyze-vrdc.R` from the project root to run end-to-end.
+Source `_analyze-vrdc.R` from the project root to run end-to-end. (The retired
+penalty/GMM scripts 4 and `5-estimate-gmm.R` were removed 2026-06-22.)
 
 The bene × plan panel is materialized as a checkpoint so (a) restarts after a crashed optimizer don't re-run the join, (b) diagnostics are easy on the canonical estimation object, and (c) counterfactuals are a `copy(bcp)` away.
 
@@ -39,39 +40,58 @@ CSV exports from SAS Enterprise Guide are done manually (PROC EXPORT or right-cl
 
 ```
 results/vrdc/
-  theta_hat.csv                 point estimates
-  moments_fit.csv               observed vs predicted aggregate moments
-  search_by_group.csv           predicted vs observed search rate by demographic group
-  ffs_by_group.csv              predicted vs observed FFS share by demographic group
-  kstar_distribution.csv        distribution of K* across respondents
-  c_distribution.csv            distribution of implied c
+  theta_hat.csv                 point estimates + bounds
+  fit_diagnostics.csv           predicted vs observed untargeted moments
+  search_by_group.csv           predicted vs observed search rate by subgroup
+  standard_errors.csv           estimates with observed-information SEs
 ```
 
 All cells with N < 11 are suppressed before output (CMS small-cell rule).
 
 ## Estimation strategy
 
-Combined objective:
-- Per-respondent log-likelihood of plan choice (Goeree-style consideration-set + multinomial logit on full-information utility within the considered set).
-- Three aggregate moments:
-  - M1: weighted mean of `searched` indicator (= weighted P(K* > 0) at theta)
-  - M2: weighted mean of FFS choice (= weighted P(K* = 0))
-  - M3: weighted mean of incumbent-MA choice among MA enrollees
+Joint maximum likelihood over each beneficiary's observed search actions and
+plan choice. No penalty and no aggregate-moment targeting — search enters the
+likelihood directly. Per beneficiary,
 
-Hyperparameter `LAMBDA` (in `4-aggregate-moments.R`) governs the relative weight of the moment block vs. the likelihood block. Default 1e3; tune if estimates drift.
+```
+L_b = ( prod_w P(choice_bw) ) * E_nu [ prod_w P(actions_bw | nu) ]
+```
 
-Optimizer: `nloptr::nloptr` with `NLOPT_LN_SBPLX` (gradient-free; bounds-respecting). SLSQP would be faster but needs analytical gradients of the simulator — see `background/progress-and-next-steps.md` for that as a future unlock.
+with `nu ~ N(0,1)` a beneficiary-level search-cost random effect shared across
+that beneficiary's waves (its dispersion identified from the panel). The choice
+probability is the Goeree consideration-set logit and is independent of `nu`, so
+it is computed once per bene-year; only the action likelihood is integrated over
+`nu` by simulation.
+
+Search rate, FFS share, and incumbent retention are reported as untargeted fit
+in `6-fit-diagnostics.R`, not matched in estimation.
+
+Optimizer: `nloptr` `NLOPT_LN_SBPLX` (gradient-free; the simulated likelihood is
+non-smooth in the action thresholds).
 
 ## Model spec
 
-Three-stage Plan-Finder-anchored ordered search; full spec in `agents/model.md`. 21 free parameters:
-- Utility (4): alpha, delta, beta, xi_FFS
-- Search-cost heterogeneity (9): gamma_0, gamma_inc, gamma_educ, gamma_age, gamma_dual, gamma_adi, gamma_net (KVSITWEB), gamma_help (KCHIHELP=2), gamma_delegate (KCHIHELP=3)
-- Awareness/prominence (8): lambda_PF_0, lambda_PF_online, lambda_PF_help, lambda_PF_delegate, lambda_broker_0, lambda_broker_help, lambda_broker_delegate, lambda_inc
+Three-stage Plan-Finder-anchored search; full spec in `agents/model.md`. 31 free
+parameters:
+- Utility (5): alpha, delta, beta, xi_FFS, psi (incumbent premium / switching cost)
+- Search cost (8): gamma_0 + log-income, education, age, dual, ADI, handbook
+  comprehension, MA tenure
+- Dispersion (1): log_sigma_alpha (search-cost random-effect SD)
+- Action baselines (4) + cutpoint (1): kappa_info / web / phone / book, tau_gap
+  (handbook reading is an ordered 3-level action)
+- Consideration breadth (5): b0, b_info, b_web, b_phone, b_book
+- Awareness (7): lambda_PF_0 / web / help / delegate, lambda_broker_0 / help / delegate
 
-`KCHIHELP=2` ("gets help") and `KCHIHELP=3` ("someone else decides") are entered as separate dummies, per the §1 mitigation in `agents/limitations.md`. Pooled-KCHIHELP estimation is a robustness check, not the baseline.
+Search actions are tried-to-find-info, website, and the 1-800 call (binary),
+plus ordered handbook reading (none / parts / thorough). All are taken from the
+SAS export and recoded in script 1; the handbook reading and comprehension
+codings carry a seat-side verification flag. `KCHIHELP` enters consideration as
+separate help (`=2`) and delegate (`=3`) terms.
 
-Standard errors: bootstrap clustered at `state_cnty_fips` (deferred). Or sandwich SEs from the Hessian × outer-product-of-gradient at theta_hat.
+Standard errors: observed-information (inverse numerical Hessian) in
+`7-standard-errors.R`. County-clustered bootstrap is the gold standard but
+re-estimates the model per replicate and is left as a long-run option.
 
 ## Sample restrictions (already applied in script 1)
 
