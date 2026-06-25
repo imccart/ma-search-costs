@@ -33,11 +33,11 @@ source("code/analysis/vrdc/0-project-bene-cost-sharing.R")
 source("code/analysis/vrdc/1-build-bene-choice-panel.R")
 source("code/analysis/vrdc/2-load-estimation-panel.R")
 source("code/analysis/vrdc/3-individual-likelihood.R")   # joint search+choice likelihood
-source("code/analysis/vrdc/5-estimate-mle.R")            # simulated MLE -> theta_hat
-source("code/analysis/vrdc/6-fit-diagnostics.R")         # predicted vs observed
-source("code/analysis/vrdc/7-standard-errors.R")         # observed-information SEs
+source("code/analysis/vrdc/4-estimate-mle.R")            # simulated MLE -> theta_hat
+source("code/analysis/vrdc/5-fit-diagnostics.R")         # predicted vs observed
+source("code/analysis/vrdc/6-standard-errors.R")         # observed-information SEs
 
 # Finite-mixture search-cost extension is opt-in (deferred):
-# source("code/analysis/vrdc/8-mixture-extension.R")
+# source("code/analysis/vrdc/7-mixture-extension.R")
 
 cat("\nVRDC analysis complete.\n")

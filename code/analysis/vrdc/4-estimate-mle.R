@@ -1,4 +1,4 @@
-# 5-estimate-mle.R — Simulated maximum likelihood (joint search + choice)
+# 4-estimate-mle.R — Simulated maximum likelihood (joint search + choice)
 #
 # Rewritten 2026-06-22. Replaces 5-estimate-gmm.R. No penalty, no LAMBDA. The
 # objective is the negative survey-weighted simulated log-likelihood from

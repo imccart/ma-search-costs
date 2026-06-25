@@ -1,9 +1,9 @@
-# 6-fit-diagnostics.R — model validation: predicted vs observed
+# 5-fit-diagnostics.R — model validation: predicted vs observed
 #
 # Rewritten 2026-06-22 for the joint-likelihood estimator. Search rate, FFS
 # share, and incumbent retention among MA are NOT estimation targets under the
 # new MLE; they are untargeted moments reported as fit. Requires `theta_hat`
-# and `nu_draws` from 5-estimate-mle.R.
+# and `nu_draws` from 4-estimate-mle.R.
 
 pred <- compute_predictions(theta_hat, nu_draws)
 

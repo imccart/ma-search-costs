@@ -10,14 +10,15 @@ _analyze-vrdc.R                master driver
 1-build-bene-choice-panel.R    join bene panel x structural_panel + EC, write checkpoint
 2-load-estimation-panel.R      read checkpoint, build markets[] + bene-specific EC vectors
 3-individual-likelihood.R      joint search+choice likelihood (random effect, switching cost)
-5-estimate-mle.R               simulated MLE (nloptr SBPLX) -> theta_hat
-6-fit-diagnostics.R            predicted vs observed untargeted moments
-7-standard-errors.R            observed-information SEs (numerical Hessian)
-8-mixture-extension.R          finite-mixture c_i (deferred)
+4-estimate-mle.R               simulated MLE (nloptr SBPLX) -> theta_hat
+5-fit-diagnostics.R            predicted vs observed untargeted moments
+6-standard-errors.R            observed-information SEs (numerical Hessian)
+7-mixture-extension.R          finite-mixture c_i (deferred)
 ```
 
 Source `_analyze-vrdc.R` from the project root to run end-to-end. (The retired
-penalty/GMM scripts 4 and `5-estimate-gmm.R` were removed 2026-06-22.)
+penalty/GMM scripts `4-aggregate-moments.R` and `5-estimate-gmm.R` were removed
+2026-06-22, and the survivors renumbered to run 0-7 contiguously.)
 
 The bene × plan panel is materialized as a checkpoint so (a) restarts after a crashed optimizer don't re-run the join, (b) diagnostics are easy on the canonical estimation object, and (c) counterfactuals are a `copy(bcp)` away.
 
@@ -65,7 +66,7 @@ it is computed once per bene-year; only the action likelihood is integrated over
 `nu` by simulation.
 
 Search rate, FFS share, and incumbent retention are reported as untargeted fit
-in `6-fit-diagnostics.R`, not matched in estimation.
+in `5-fit-diagnostics.R`, not matched in estimation.
 
 Optimizer: `nloptr` `NLOPT_LN_SBPLX` (gradient-free; the simulated likelihood is
 non-smooth in the action thresholds).
@@ -90,7 +91,7 @@ codings carry a seat-side verification flag. `KCHIHELP` enters consideration as
 separate help (`=2`) and delegate (`=3`) terms.
 
 Standard errors: observed-information (inverse numerical Hessian) in
-`7-standard-errors.R`. County-clustered bootstrap is the gold standard but
+`6-standard-errors.R`. County-clustered bootstrap is the gold standard but
 re-estimates the model per replicate and is left as a long-run option.
 
 ## Sample restrictions (already applied in script 1)

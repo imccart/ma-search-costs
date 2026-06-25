@@ -1,9 +1,9 @@
-# 7-standard-errors.R — observed-information standard errors at theta_hat
+# 6-standard-errors.R — observed-information standard errors at theta_hat
 #
 # Inverts the numerical Hessian of the survey-weighted negative log-likelihood.
 # This is a practical, model-based standard error. The gold standard here is a
 # county-clustered bootstrap, but that re-estimates the model per replicate and
-# is left as a long-run option (loop 5-estimate-mle.R over resampled clusters).
+# is left as a long-run option (loop 4-estimate-mle.R over resampled clusters).
 # Parameters resting on a bound (alpha, delta, the lambdas at 0) have invalid
 # Hessian-based standard errors and are reported as NA. Requires `theta_hat`,
 # `nu_draws`, `theta_lower`, `theta_upper`, and numDeriv.

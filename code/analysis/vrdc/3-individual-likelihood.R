@@ -10,7 +10,7 @@
 # from the OBSERVED actions), so it is computed once per bene-year; only the
 # action likelihood is integrated over nu (drawn once per BENE, shared across
 # that bene's waves, which identifies sigma_alpha from the panel). Estimated by
-# simulated ML in 5-estimate-mle.R.
+# simulated ML in 4-estimate-mle.R.
 #
 # Search actions (all from the SAS export, recoded in script 1):
 #   act_info  (KNINFMCR), act_web (KVSITWEB), act_phone (KCPHINFO)  — binary
