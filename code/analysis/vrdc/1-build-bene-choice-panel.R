@@ -110,7 +110,11 @@ bene <- bene %>%
     age_dm      = age - 75,
     log_inc_dm  = log_inc - mean(log_inc, na.rm = TRUE),
     educ_yrs_dm = educ_yrs - mean(educ_yrs, na.rm = TRUE),
-    adi_dm      = adi_raw / 100,
+    # adi_raw reads as character because the ADI national rank carries
+    # suppression codes (GQ / PH / GQ-PH) for group-quarters/suppressed block
+    # groups. Coerce to numeric (codes -> NA) and let the imputation block below
+    # fill NA with the mean.
+    adi_dm      = as.numeric(adi_raw) / 100,
 
     chosen_plan_id = if_else(
       is_ffs_mbsf == 1, "FFS",
@@ -196,9 +200,9 @@ bcp <- bene_dt[panel_dt, on = c("county_fips", "year"), nomatch = NULL,
 
 message(sprintf("After join: %d bene-plan rows", nrow(bcp)))
 message(sprintf("Plans per bene-year: median=%d, mean=%.1f, max=%d",
-                bcp[, median(.N), by = .(BASE_ID, year)][, median(V1)],
-                mean(bcp[, .N, by = .(BASE_ID, year)]$N),
-                bcp[, max(.N), by = .(BASE_ID, year)][, max(V1)]))
+                bcp[, median(.N), by = .(BASEID, year)][, median(V1)],
+                mean(bcp[, .N, by = .(BASEID, year)]$N),
+                bcp[, max(.N), by = .(BASEID, year)][, max(V1)]))
 
 
 # ---------------------------------------------------------------------------
@@ -238,7 +242,7 @@ bcp[, `:=`(
 )]
 
 # Sanity: every bene should have exactly one chosen plan in their market.
-n_chosen <- bcp[, .(n_chosen = sum(is_chosen)), by = .(BASE_ID, year)]
+n_chosen <- bcp[, .(n_chosen = sum(is_chosen)), by = .(BASEID, year)]
 n_zero   <- n_chosen[n_chosen == 0L, .N]
 n_multi  <- n_chosen[n_chosen >  1L, .N]
 n_one    <- n_chosen[n_chosen == 1L, .N]
@@ -249,11 +253,11 @@ message(sprintf("Chosen-plan match: %d benes with exactly 1 chosen, %d with 0, %
 if (n_zero > 0) {
   message("Dropping bene-years whose chosen plan is not in the public panel ",
           "(typically SNPs / EGHPs / mid-year-only plans excluded upstream).")
-  # Drop the offending (BASE_ID, year) pairs, NOT whole benes — a bene can have
+  # Drop the offending (BASEID, year) pairs, NOT whole benes — a bene can have
   # a valid chosen plan in one year and an unmatched plan in another (MCBS is a
-  # rotating panel). A BASE_ID-only filter would leave the unmatched bene-years
+  # rotating panel). A BASEID-only filter would leave the unmatched bene-years
   # in bcp with zero chosen plans, surfacing as NA choice_idx in script 2.
-  bcp <- bcp[n_chosen[n_chosen == 1L, .(BASE_ID, year)], on = c("BASE_ID", "year"), nomatch = NULL]
+  bcp <- bcp[n_chosen[n_chosen == 1L, .(BASEID, year)], on = c("BASEID", "year"), nomatch = NULL]
 }
 if (n_multi > 0) {
   stop(sprintf("%d benes have multiple chosen-plan matches. Investigate.", n_multi))
@@ -266,8 +270,8 @@ if (n_multi > 0) {
 
 message("\n========== Bene choice panel ==========")
 message(sprintf("Rows                : %d", nrow(bcp)))
-message(sprintf("Unique benes        : %d", uniqueN(bcp$BASE_ID)))
-message(sprintf("Unique bene-years   : %d", uniqueN(bcp[, .(BASE_ID, year)])))
+message(sprintf("Unique benes        : %d", uniqueN(bcp$BASEID)))
+message(sprintf("Unique bene-years   : %d", uniqueN(bcp[, .(BASEID, year)])))
 message(sprintf("Unique markets      : %d", uniqueN(bcp[, .(county_fips, year)])))
 message(sprintf("Years               : %s", paste(sort(unique(bcp$year)), collapse = ", ")))
 

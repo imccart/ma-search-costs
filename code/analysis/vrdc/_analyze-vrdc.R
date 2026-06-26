@@ -19,9 +19,14 @@
 #   results/vrdc/search_by_group.csv   predicted vs observed search rate by group
 #   results/vrdc/standard_errors.csv   observed-information SEs
 
-pacman::p_load(
-  tidyverse, fixest, survey, nloptr, data.table, numDeriv
-)
+# VRDC seat has no pacman — load each package explicitly. Order preserved
+# (tidyverse before data.table) so data.table wins the shared-name masking.
+library(tidyverse)
+library(fixest)
+library(survey)
+library(nloptr)
+library(data.table)
+library(numDeriv)
 
 # 0 builds bene-specific EC[c|i,j] and Var(C|j) by projecting each bene's
 #   claims utilization through every plan's PBP cost-sharing schedule.

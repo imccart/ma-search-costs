@@ -161,12 +161,11 @@ loglik_actions <- function(ai, aw, ap, br, th, B, c) {
 # ---- Full simulated joint log-likelihood ----------------------------------
 compute_individual_loglik <- function(theta, nu_draws, return_components = FALSE) {
   th <- unpack_theta(theta)
-  market_prom <- lapply(markets, compute_market_prominence)
 
   n <- nrow(bene)
   ll_choice <- numeric(n); B_vec <- numeric(n); logc_det <- numeric(n)
   for (i in seq_len(n)) {
-    brow <- as.list(bene[i]); mid <- brow$market_id; mkt <- markets[[mid]]
+    brow <- bene_rows[[i]]; mid <- brow$market_id; mkt <- markets[[mid]]
     v    <- compute_bene_utility(mkt, bene_mc[[i]], bene_vc[[i]], th)
     prom <- market_prom[[mid]]
     sal  <- compute_salience(mkt, prom, brow, th)
@@ -181,8 +180,6 @@ compute_individual_loglik <- function(theta, nu_draws, return_components = FALSE
   }
 
   sigma <- exp(th$log_sigma_alpha); R <- length(nu_draws)
-  idx_by_bene <- split(seq_len(n), bene$BASE_ID)
-  wgt_by_bene <- bene$wgt_full_sample[vapply(idx_by_bene, `[`, integer(1), 1L)]
   ll_bene <- numeric(length(idx_by_bene))
   for (bi in seq_along(idx_by_bene)) {
     rows <- idx_by_bene[[bi]]
@@ -209,12 +206,11 @@ compute_individual_loglik <- function(theta, nu_draws, return_components = FALSE
 # ---- Model predictions at a parameter vector (for fit diagnostics) --------
 compute_predictions <- function(theta, nu_draws) {
   th <- unpack_theta(theta)
-  market_prom <- lapply(markets, compute_market_prominence)
   n <- nrow(bene); R <- length(nu_draws); sigma <- exp(th$log_sigma_alpha)
   p_ffs <- p_inc_ma <- p_search <- numeric(n)
 
   for (i in seq_len(n)) {
-    brow <- as.list(bene[i]); mid <- brow$market_id; mkt <- markets[[mid]]
+    brow <- bene_rows[[i]]; mid <- brow$market_id; mkt <- markets[[mid]]
     v    <- compute_bene_utility(mkt, bene_mc[[i]], bene_vc[[i]], th)
     prom <- market_prom[[mid]]; sal <- compute_salience(mkt, prom, brow, th)
     inc  <- brow$prior_plan_offered == 1L &
@@ -245,3 +241,17 @@ compute_predictions <- function(theta, nu_draws) {
                             bene$incumbent_bene_year == 1L)
   )
 }
+
+
+# ---------------------------------------------------------------------------
+# One-time precompute (theta-independent; hoisted out of the objective)
+# ---------------------------------------------------------------------------
+# None of these depend on theta, so building them once here rather than on every
+# optimizer evaluation inside compute_individual_loglik is a large speedup with
+# no effect on any estimate. The two functions above reference these globals at
+# call time (bene is fully finalized by the NA-guard block at the top of this
+# script, so the precomputed rows match exactly).
+market_prom <- lapply(markets, compute_market_prominence)
+bene_rows   <- lapply(seq_len(nrow(bene)), function(i) as.list(bene[i]))
+idx_by_bene <- split(seq_len(nrow(bene)), bene$BASEID)
+wgt_by_bene <- bene$wgt_full_sample[vapply(idx_by_bene, `[`, integer(1), 1L)]

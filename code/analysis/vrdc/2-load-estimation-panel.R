@@ -4,7 +4,7 @@
 # Input:  data/output/bene_choice_panel.csv (script 1)
 # Outputs (in R env):
 #   bcp          — long-format bene × plan-in-market panel (data.table)
-#   bene         — bene-year summary (one row per BASE_ID×year, dedup of bcp)
+#   bene         — bene-year summary (one row per BASEID×year, dedup of bcp)
 #   bene_design  — survey::svydesign for SE-aware moment computations
 #   markets      — list of per-market plan tibbles (for fast plan-set lookups)
 #   bene_to_market — vector mapping bene row index -> market index
@@ -21,12 +21,12 @@ message(sprintf("Loaded bene_choice_panel: %d rows, %d cols", nrow(bcp), ncol(bc
 
 
 # ---------------------------------------------------------------------------
-# Bene-year summary (one row per BASE_ID × year)
+# Bene-year summary (one row per BASEID × year)
 # ---------------------------------------------------------------------------
 # Used for survey-weighted moments that aggregate to bene-year, not bene-plan.
 
 bene_cols <- c(
-  "BASE_ID", "year", "county_fips",
+  "BASEID", "year", "county_fips",
   "age", "age_dm", "sex_cd", "race_cd",
   "race_white", "race_black", "race_hisp", "race_other",
   "income_cat", "income_mid", "log_inc", "log_inc_dm",
@@ -48,10 +48,10 @@ bene_cols <- c(
 # (which uses bene-specific prior_plan_id × plan_id matching at runtime).
 bene <- bcp[, .(
   incumbent_bene_year = max(incumbent_bene, na.rm = TRUE)
-), by = .(BASE_ID, year)] %>%
+), by = .(BASEID, year)] %>%
   merge(
     unique(bcp[, ..bene_cols]),
-    by = c("BASE_ID", "year")
+    by = c("BASEID", "year")
   )
 
 # Keep only bene-years whose chosen plan is actually in the choice set (exactly
@@ -59,14 +59,14 @@ bene <- bcp[, .(
 # EGHPs / employer or mid-year plans absent from the public landscape) cannot
 # enter the discrete-choice likelihood, so exclude them from all moments. Script
 # 1 intends to drop these; this is a defensive backstop at the bene level.
-valid_by <- bcp[, .(nch = sum(is_chosen)), by = .(BASE_ID, year)][nch == 1L, .(BASE_ID, year)]
+valid_by <- bcp[, .(nch = sum(is_chosen)), by = .(BASEID, year)][nch == 1L, .(BASEID, year)]
 n_pre_choice <- nrow(bene)
-bene <- bene[valid_by, on = c("BASE_ID", "year"), nomatch = NULL]
+bene <- bene[valid_by, on = c("BASEID", "year"), nomatch = NULL]
 message(sprintf("Dropped %d bene-years with no in-panel chosen plan (%d remain)",
                 n_pre_choice - nrow(bene), nrow(bene)))
 
 message(sprintf("Bene summary: %d bene-year rows, %d unique benes",
-                nrow(bene), uniqueN(bene$BASE_ID)))
+                nrow(bene), uniqueN(bene$BASEID)))
 
 
 # ---------------------------------------------------------------------------
@@ -126,15 +126,15 @@ bene[market_keys, on = c("county_fips", "year"), market_id := i.market_id]
 # For each bene, the within-market index of their chosen plan.
 # Stored as a column on `bene` (not a separate vector) so downstream
 # scripts can reference `bene$choice_idx[i]` directly.
-choice_long <- bcp[is_chosen == 1, .(BASE_ID, year, plan_id, market_id)]
+choice_long <- bcp[is_chosen == 1, .(BASEID, year, plan_id, market_id)]
 
 # Attach each bene-year's chosen plan_id via a join-update. Do NOT look up
-# choice_long inside the vapply below: choice_long carries its own BASE_ID/year
+# choice_long inside the vapply below: choice_long carries its own BASEID/year
 # columns, which shadow bene's in the i-expression, so a nested
-# choice_long[.(BASE_ID[i], year[i]), ...] silently indexes choice_long's own
+# choice_long[.(BASEID[i], year[i]), ...] silently indexes choice_long's own
 # rows by i rather than matching bene's keys (such a lookup returns
 # nrow(choice_long) values, not one per bene). Join first, then index.
-bene[choice_long, on = c("BASE_ID", "year"), chosen_pid := i.plan_id]
+bene[choice_long, on = c("BASEID", "year"), chosen_pid := i.plan_id]
 
 bene[, choice_idx := vapply(seq_len(.N), function(i) {
   which(markets[[market_id[i]]]$plan_id == chosen_pid[i])[1]
@@ -157,13 +157,13 @@ message(sprintf("Chosen-plan index resolved for all %d benes", nrow(bene)))
 # the market-representative value that survives the dedup in `markets`. For each
 # bene-year, look up this beneficiary's mean_cost / var_cost for every plan in
 # their market, in markets[[m]]$plan_id order (the order choice_idx refers to).
-setkey(bcp, BASE_ID, year, plan_id)
+setkey(bcp, BASEID, year, plan_id)
 bene_mc <- vector("list", nrow(bene))
 bene_vc <- vector("list", nrow(bene))
 for (i in seq_len(nrow(bene))) {
   m   <- bene$market_id[i]
   pid <- markets[[m]]$plan_id
-  rec <- bcp[.(bene$BASE_ID[i], bene$year[i], pid)]
+  rec <- bcp[.(bene$BASEID[i], bene$year[i], pid)]
   bene_mc[[i]] <- rec$mean_cost
   bene_vc[[i]] <- rec$var_cost
 }

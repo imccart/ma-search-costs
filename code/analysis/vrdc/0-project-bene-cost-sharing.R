@@ -102,7 +102,7 @@ pbp_sched <- pbp[, .(
 # ---------------------------------------------------------------------------
 
 bene <- fread(bene_path, select = c(
-  "BASE_ID", "BENE_ID", "year", "state_cnty_fips", "is_ffs_mbsf",
+  "BASEID", "BENE_ID", "year", "state_cnty_fips", "is_ffs_mbsf",
   "link_status", "full_year_partAB", "not_esrd", "active_shopper"
 ))
 bene <- bene[link_status == "ok" & full_year_partAB == 1 & not_esrd == 1
@@ -191,6 +191,6 @@ print(summary(sqrt(var_j$Var_C_j)))
 # Write checkpoint — long format keyed on (BENE_ID, plan_id, year)
 # ---------------------------------------------------------------------------
 
-out <- bp[, .(BENE_ID, BASE_ID, year, county_fips, plan_id, EC, Var_C_j, n_pool)]
+out <- bp[, .(BENE_ID, BASEID, year, county_fips, plan_id, EC, Var_C_j, n_pool)]
 fwrite(out, out_path)
 cat(sprintf("\nWrote %s (%d rows)\n", out_path, nrow(out)))
