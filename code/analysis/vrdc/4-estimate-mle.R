@@ -120,16 +120,23 @@ cat(sprintf("  beneficiaries: %d   bene-years: %d   draws: %d\n",
             uniqueN(bene$BASEID), nrow(bene), N_SIM_DRAWS))
 t0 <- Sys.time()
 
+# Per-parameter initial step, scaled to each param's own magnitude. The free
+# params span ~100x (psi/xi_FFS ~ O(1); the gammas ~ 0.02-0.07), so a single
+# subplex step over-steps the gammas and under-steps psi/xi_FFS and wastes
+# evaluations. Floored at 0.02 so params starting near zero still get a real step.
+init_step <- pmax(0.05 * abs(theta0), 0.02)
+
 fit <- nloptr(
   x0     = theta0,
   eval_f = neg_ll,
   lb     = theta_lower,
   ub     = theta_upper,
-  opts   = list(algorithm   = "NLOPT_LN_SBPLX",
-                xtol_rel    = 1e-5,
-                ftol_rel    = 1e-6,
-                maxeval     = 3000,
-                print_level = 1)
+  opts   = list(algorithm    = "NLOPT_LN_SBPLX",
+                xtol_rel     = 1e-5,
+                ftol_rel     = 1e-6,
+                maxeval      = 3000,
+                initial_step = init_step,
+                print_level  = 1)
 )
 
 cat(sprintf("\nElapsed: %.1f minutes\n",
