@@ -31,10 +31,10 @@ for (col in c("log_inc_dm","educ_yrs_dm","age_dm","is_dual","adi_dm",
   set(bene, which(is.na(bene[[col]])), col, 0)
 
 
-# ---- Parameter layout (31) ------------------------------------------------
+# ---- Parameter layout (25) ------------------------------------------------
 theta_names <- c(
-  # Utility (5)
-  "alpha", "delta", "beta", "xi_FFS", "psi",
+  # Utility (4)
+  "alpha", "beta", "xi_FFS", "psi",
   # Search-cost covariates (8): + comprehension (hb) + tenure (exp)
   "gamma_0", "gamma_inc", "gamma_educ", "gamma_age", "gamma_dual", "gamma_adi",
   "gamma_hb", "gamma_exp",
@@ -44,16 +44,13 @@ theta_names <- c(
   "kappa_info", "kappa_web", "kappa_phone", "kappa_book", "tau_gap",
   # Consideration breadth (5)
   "b0", "b_info", "b_web", "b_phone", "b_book",
-  # Awareness weights (7): PF (+web action, +help, +delegate), broker (+help, +delegate)
-  "lambda_PF_0", "lambda_PF_web", "lambda_PF_help", "lambda_PF_delegate",
-  "lambda_broker_0", "lambda_broker_help", "lambda_broker_delegate"
+  # Awareness weights (2): market-level PF constant + broker constant
+  "lambda_PF_0", "lambda_broker_0"
 )
 
-# Bounds: alpha, delta, tau_gap, and all lambdas >= 0; everything else free.
+# Bounds: alpha, tau_gap, and both lambda constants >= 0; everything else free.
 theta_lower <- setNames(rep(-Inf, length(theta_names)), theta_names)
-theta_lower[c("alpha","delta","tau_gap",
-              "lambda_PF_0","lambda_PF_web","lambda_PF_help","lambda_PF_delegate",
-              "lambda_broker_0","lambda_broker_help","lambda_broker_delegate")] <- 0
+theta_lower[c("alpha","tau_gap","lambda_PF_0","lambda_broker_0")] <- 0
 theta_upper <- setNames(rep(Inf, length(theta_names)), theta_names)
 
 unpack_theta <- function(theta) setNames(as.list(theta), theta_names)
@@ -63,9 +60,9 @@ unpack_theta <- function(theta) setNames(as.list(theta), theta_names)
 compute_bene_utility <- function(mkt, mc, vc, th) {
   v <- numeric(nrow(mkt))
   is_ffs <- mkt$plan_kind == "FFS"; is_ma <- !is_ffs
-  mcs <- mc / 1e3; vcs <- vc / 1e6
-  v[is_ffs] <- -th$alpha * mcs[is_ffs] - th$delta * vcs[is_ffs] + th$xi_FFS
-  v[is_ma]  <- -th$alpha * mcs[is_ma]  - th$delta * vcs[is_ma] +
+  mcs <- mc / 1e3
+  v[is_ffs] <- -th$alpha * mcs[is_ffs] + th$xi_FFS
+  v[is_ma]  <- -th$alpha * mcs[is_ma] +
                 th$beta * ifelse(is.na(mkt$Star_Rating[is_ma]), 0,
                                  mkt$Star_Rating[is_ma] - 3.5)
   v
@@ -81,16 +78,15 @@ compute_market_prominence <- function(mkt) {
   list(s_PF = s_PF, s_broker = s_broker, is_ma = is_ma)
 }
 
-# ---- Bene-specific salience over MA plans (web action + help + delegate) ---
+# ---- Market-level salience over MA plans (constant PF + broker weights) -----
+# lam_PF and lam_broker are now constants, so salience is common to all benes
+# in a market (no act_web / KCHIHELP dependence). brow is retained in the
+# signature only so call sites are unchanged.
 compute_salience <- function(mkt, prom, brow, th) {
   if (!any(prom$is_ma))
     return(list(w = numeric(nrow(mkt)), W = 0, is_ma = prom$is_ma))
-  lam_PF <- th$lambda_PF_0 + th$lambda_PF_web * brow$act_web +
-            th$lambda_PF_help     * brow$KCHIHELP_help +
-            th$lambda_PF_delegate * brow$KCHIHELP_delegate
-  lam_broker <- th$lambda_broker_0 +
-            th$lambda_broker_help     * brow$KCHIHELP_help +
-            th$lambda_broker_delegate * brow$KCHIHELP_delegate
+  lam_PF     <- th$lambda_PF_0
+  lam_broker <- th$lambda_broker_0
   log_w <- lam_PF * prom$s_PF + lam_broker * prom$s_broker
   log_w[!prom$is_ma] <- -Inf
   mx <- max(log_w[prom$is_ma])

@@ -19,7 +19,7 @@ W_SUM <- bene[!duplicated(bene$BASEID), sum(wgt_full_sample)]
 # ---- Initial values via two fast first-stage MLEs -------------------------
 # Stage 1: choice-only conditional logit (phi = 1) -> utility block. With every
 #   plan considered, the Goeree choice prob collapses to a plain conditional
-#   logit, globally concave in {alpha, delta, beta, xi_FFS, psi}.
+#   logit, globally concave in {alpha, beta, xi_FFS, psi}.
 # Stage 2: pooled action logit (random effect off) -> search-cost block. B_i is
 #   fixed at the stage-1 utilities and hand-set awareness, so the action
 #   likelihood is a vectorized set of logits over {gamma_*, kappa_*, tau_gap}.
@@ -27,14 +27,12 @@ W_SUM <- bene[!duplicated(bene$BASEID), sum(wgt_full_sample)]
 # VALUES only; the full joint MLE below re-optimizes all 31 from here. Perturb
 # lam_hand / b_hand for multi-start.
 
-lam_hand <- list(lambda_PF_0 = 0.50, lambda_PF_web = 1.00, lambda_PF_help = 0.30,
-                 lambda_PF_delegate = 0.20, lambda_broker_0 = 0.50,
-                 lambda_broker_help = 0.50, lambda_broker_delegate = 0.80)
+lam_hand <- list(lambda_PF_0 = 0.50, lambda_broker_0 = 0.50)
 b_hand   <- c(b0 = 0, b_info = 0.30, b_web = 0.80, b_phone = 0.30, b_book = 0.30)
 
 # --- Stage 1: conditional logit on plan choice (phi = 1) ---
 stage1_negll <- function(u) {
-  th <- list(alpha = u[1], delta = u[2], beta = u[3], xi_FFS = u[4], psi = u[5])
+  th <- list(alpha = u[1], beta = u[2], xi_FFS = u[3], psi = u[4])
   ll <- 0
   for (i in seq_len(nrow(bene))) {
     brow <- bene_rows[[i]]; mkt <- markets[[brow$market_id]]
@@ -49,9 +47,9 @@ stage1_negll <- function(u) {
   -ll / W_SUM
 }
 cat("\nStage 1: choice-only conditional logit...\n")
-s1 <- optim(c(0.6, 0.1, 0.5, 6.0, 1.0), stage1_negll, method = "L-BFGS-B",
-            lower = c(0, 0, -Inf, -Inf, -Inf))$par
-names(s1) <- c("alpha", "delta", "beta", "xi_FFS", "psi")
+s1 <- optim(c(0.6, 0.5, 6.0, 1.0), stage1_negll, method = "L-BFGS-B",
+            lower = c(0, -Inf, -Inf, -Inf))$par
+names(s1) <- c("alpha", "beta", "xi_FFS", "psi")
 cat("  "); print(round(s1, 4))
 
 # --- Precompute B_i at the stage-1 utilities and hand-set awareness ---
@@ -95,15 +93,13 @@ cat("  "); print(round(s2, 4))
 
 # --- Assemble theta0 (order must match theta_names) ---
 theta0 <- c(
-  s1["alpha"], s1["delta"], s1["beta"], s1["xi_FFS"], s1["psi"],
+  s1["alpha"], s1["beta"], s1["xi_FFS"], s1["psi"],
   s2["gamma_0"], s2["gamma_inc"], s2["gamma_educ"], s2["gamma_age"],
   s2["gamma_dual"], s2["gamma_adi"], s2["gamma_hb"], s2["gamma_exp"],
   log(0.5),
   s2["kappa_info"], s2["kappa_web"], s2["kappa_phone"], s2["kappa_book"], s2["tau_gap"],
   b_hand["b0"], b_hand["b_info"], b_hand["b_web"], b_hand["b_phone"], b_hand["b_book"],
-  lam_hand$lambda_PF_0, lam_hand$lambda_PF_web, lam_hand$lambda_PF_help,
-  lam_hand$lambda_PF_delegate, lam_hand$lambda_broker_0,
-  lam_hand$lambda_broker_help, lam_hand$lambda_broker_delegate
+  lam_hand$lambda_PF_0, lam_hand$lambda_broker_0
 )
 names(theta0) <- theta_names
 stopifnot(identical(names(theta0), theta_names))
