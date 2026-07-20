@@ -19,6 +19,16 @@ bcp <- fread(bcp_path,
 
 message(sprintf("Loaded bene_choice_panel: %d rows, %d cols", nrow(bcp), ncol(bcp)))
 
+# Drop duplicate (BASEID, year, plan_id) rows before anything downstream uses
+# them. A few plans carry >1 cost-sharing schedule per county-year in the
+# upstream PBP file (contract_planid is coarser than the benefit-package grain),
+# which fans out into multiple EC rows per bene-plan back in script 0. Keep the
+# first so each plan appears once per bene, matching the market dedup below.
+n_pre_dup <- nrow(bcp)
+bcp <- unique(bcp, by = c("BASEID", "year", "plan_id"))
+message(sprintf("Dropped %d duplicate bene-plan rows (%d remain)",
+                n_pre_dup - nrow(bcp), nrow(bcp)))
+
 
 # ---------------------------------------------------------------------------
 # Bene-year summary (one row per BASEID × year)
@@ -168,6 +178,9 @@ for (i in seq_len(nrow(bene))) {
   bene_vc[[i]] <- rec$var_cost
 }
 stopifnot(!any(vapply(bene_mc, function(x) any(is.na(x)), logical(1))))
+# Length guard: each cost vector must match its market's plan count exactly.
+stopifnot(all(lengths(bene_mc) ==
+              vapply(bene$market_id, function(m) nrow(markets[[m]]), integer(1))))
 message("Built bene-specific EC / Var vectors aligned to market plan order")
 
 

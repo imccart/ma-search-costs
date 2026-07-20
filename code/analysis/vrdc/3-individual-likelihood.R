@@ -53,7 +53,13 @@ theta_lower <- setNames(rep(-Inf, length(theta_names)), theta_names)
 theta_lower[c("alpha","tau_gap","lambda_PF_0","lambda_broker_0")] <- 0
 theta_upper <- setNames(rep(Inf, length(theta_names)), theta_names)
 
-unpack_theta <- function(theta) setNames(as.list(theta), theta_names)
+unpack_theta <- function(theta) {
+  # Honor names when present so a theta stored in a different order (e.g. a
+  # reloaded theta_hat) still maps each value to the right parameter. The
+  # optimizer passes an unnamed vector already in theta_names order, unchanged.
+  if (!is.null(names(theta))) theta <- theta[theta_names]
+  setNames(as.list(theta), theta_names)
+}
 
 
 # ---- Stage 3 utility (bene-specific EC; incumbent psi added per-bene) ------
@@ -229,7 +235,9 @@ compute_predictions <- function(theta, nu_draws) {
 
   data.table(
     wgt        = bene$wgt_full_sample, is_dual = bene$is_dual, has_bach = bene$has_bach,
-    p_search   = p_search, obs_search = as.integer(bene$searched_obs == 1),
+    p_search   = p_search,
+    obs_search = as.integer(bene$act_info == 1 | bene$act_web == 1 |
+                            bene$act_phone == 1 | bene$book_read > 0),
     p_ffs      = p_ffs,    obs_ffs    = bene$is_ffs_admin,
     p_inc_ma   = p_inc_ma,
     obs_inc_ma = as.integer(bene$chosen_pid == bene$prior_plan_id),
