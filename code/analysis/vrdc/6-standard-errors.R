@@ -76,12 +76,14 @@ cache_file <- file.path(results_dir, "hessian_cache.csv")
 cache_env  <- new.env(parent = emptyenv())
 key_of     <- function(t) paste(sprintf("%.17g", t), collapse = "|")
 
+# The column is theta_key, not key: data.table() has a formal argument named
+# key, so a column called key is swallowed as the key= argument instead.
 if (file.exists(cache_file)) {
   old <- fread(cache_file, colClasses = c("character", "numeric"))
-  for (r in seq_len(nrow(old))) assign(old$key[r], old$value[r], envir = cache_env)
+  for (r in seq_len(nrow(old))) assign(old$theta_key[r], old$value[r], envir = cache_env)
   cat(sprintf("\nReloaded %d cached likelihood evaluations.\n", nrow(old)))
 } else {
-  fwrite(data.table(key = character(), value = numeric()), cache_file)
+  fwrite(data.table(theta_key = character(), value = numeric()), cache_file)
 }
 
 n_new <- 0L
@@ -91,7 +93,7 @@ negll <- function(t) {
     return(get(k, envir = cache_env))
   v <- -compute_individual_loglik(t, nu_draws)
   assign(k, v, envir = cache_env)
-  fwrite(data.table(key = k, value = v), cache_file, append = TRUE, col.names = FALSE)
+  fwrite(data.table(theta_key = k, value = v), cache_file, append = TRUE, col.names = FALSE)
   n_new <<- n_new + 1L
   if (n_new %% 25L == 0L) {
     cat(sprintf("  %d new evaluations (%s)\n", n_new, format(Sys.time(), "%H:%M")))
