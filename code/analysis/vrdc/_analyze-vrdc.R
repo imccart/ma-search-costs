@@ -40,7 +40,11 @@ source("code/analysis/vrdc/2-load-estimation-panel.R")
 source("code/analysis/vrdc/3-individual-likelihood.R")   # joint search+choice likelihood
 source("code/analysis/vrdc/4-estimate-mle.R")            # simulated MLE -> theta_hat
 source("code/analysis/vrdc/5-fit-diagnostics.R")         # predicted vs observed
-source("code/analysis/vrdc/6-standard-errors.R")         # observed-information SEs
+# 6 reloads theta_hat from results/vrdc and rebuilds nu_draws, so 4 and 5 can be
+# commented out and 6 run on its own after 3. Its Hessian evaluations are cached
+# to results/vrdc/hessian_cache.csv, so an interrupted run resumes on re-source;
+# delete that cache if theta_hat or the sample changes.
+source("code/analysis/vrdc/6-standard-errors.R")         # SEs at theta_hat
 
 # Finite-mixture search-cost extension is opt-in (deferred):
 # source("code/analysis/vrdc/7-mixture-extension.R")
