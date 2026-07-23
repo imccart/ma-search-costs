@@ -24,7 +24,7 @@ W_SUM <- bene[!duplicated(bene$BASEID), sum(wgt_full_sample)]
 #   fixed at the stage-1 utilities and hand-set awareness, so the action
 #   likelihood is a vectorized set of logits over {gamma_*, kappa_*, tau_gap}.
 # Awareness (lambda_*) and breadth (b_*) stay at hand values. These are STARTING
-# VALUES only; the full joint MLE below re-optimizes all 31 from here. Perturb
+# VALUES only; the full joint MLE below re-optimizes all 25 from here. Perturb
 # lam_hand / b_hand for multi-start.
 
 lam_hand <- list(lambda_PF_0 = 0.50, lambda_broker_0 = 0.50)

@@ -31,8 +31,6 @@
 # SNF and HHA contributions are deferred (PBP files don't expose B2/B6 fields
 # in plan_county_benefits.csv; matches the dominance computation's choice).
 
-pacman::p_load(data.table)
-
 # ---------------------------------------------------------------------------
 # Inputs
 # ---------------------------------------------------------------------------
@@ -107,7 +105,7 @@ bene <- fread(bene_path, select = c(
 ))
 bene <- bene[link_status == "ok" & full_year_partAB == 1 & not_esrd == 1
              & active_shopper == 1 & !is.na(state_cnty_fips)]
-bene[, county_fips := sprintf("%05s", as.character(state_cnty_fips))]
+bene[, county_fips := str_pad(state_cnty_fips, 5, side = "left", pad = "0")]
 
 ma_util  <- fread(ma_util_path)
 ffs_util <- fread(ffs_util_path)

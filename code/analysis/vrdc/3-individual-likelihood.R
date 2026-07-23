@@ -242,7 +242,7 @@ compute_predictions <- function(theta, nu_draws) {
     p_inc_ma   = p_inc_ma,
     obs_inc_ma = as.integer(bene$chosen_pid == bene$prior_plan_id),
     ma_prior   = as.integer(bene$is_ffs_admin == 0L & bene$has_prior_year == 1L &
-                            bene$incumbent_bene_year == 1L)
+                            bene$incumbent_bene_year == 1L & bene$prior_plan_id != "FFS")
   )
 }
 

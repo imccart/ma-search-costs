@@ -65,7 +65,7 @@ educ_years <- c(
 
 bene <- bene %>%
   mutate(
-    county_fips = sprintf("%05s", as.character(state_cnty_fips)),
+    county_fips = str_pad(state_cnty_fips, 5, side = "left", pad = "0"),
     state_fips  = substr(county_fips, 1, 2),
 
     income_mid = income_midpoints[as.character(income_cat)],
