@@ -49,4 +49,14 @@ source("code/analysis/vrdc/6-standard-errors.R")         # SEs at theta_hat
 # Finite-mixture search-cost extension is opt-in (deferred):
 # source("code/analysis/vrdc/7-mixture-extension.R")
 
+# Conditional-independence robustness for the four search actions is opt-in and
+# expensive — it re-estimates the model with each action dropped and with a
+# web/phone correlated error. Runs standalone after 3 (reloads theta_hat), and
+# every evaluation is cached so an interrupted seat session resumes on re-source.
+# source("code/analysis/vrdc/8-conditional-independence.R")
+
+# Decision-support counterfactual (lower search cost, dose-response). Runs
+# standalone after 3 (reloads theta_hat); solved once, a few minutes, no SEs.
+# source("code/analysis/vrdc/9-counterfactual.R")
+
 cat("\nVRDC analysis complete.\n")
