@@ -127,15 +127,16 @@ for (bi in seq_along(idx_by_bene)) {
             !is.na(brow$prior_plan_id) & mkt$plan_id == brow$prior_plan_id
     v[inc] <- v[inc] + th$psi
     sal  <- compute_salience(mkt, market_prom[[mid]], brow, th)
-    B    <- compute_search_benefit(mkt, v, sal)
+    B    <- compute_search_benefit(v, mkt$plan_kind == "FFS" | inc)
     ld   <- compute_log_c_det(brow, th)
 
     # Observed-action log-lik at each draw (baseline cost) -> posterior weights.
     ai <- bene$act_info[i]; aw <- bene$act_web[i]; ap <- bene$act_phone[i]; br <- bene$book_read[i]
+    rv <- bene$review_level[i]
     oll <- numeric(R)
     for (r in seq_len(R)) {
       c_r <- exp(ld + sigma * nu_draws[r])
-      oll[r] <- sum(loglik_actions(ai, aw, ap, br, th, B, c_r))
+      oll[r] <- sum(loglik_actions(ai, aw, ap, br, rv, th, B, c_r))
     }
     draw_ll <- draw_ll + oll
 
@@ -167,6 +168,7 @@ for (bi in seq_along(idx_by_bene)) {
       z   <- cc$B - c_r
       Pi <- plogis(z - th$kappa_info); Pw <- plogis(z - th$kappa_web)
       Pp <- plogis(z - th$kappa_phone); Pb <- plogis(z - th$kappa_book)
+      Pr <- plogis(z - th$kappa_review)                        # reviewed options at all
       PP <- matrix(0, 16, R)                                  # profile probs, 16 x R
       for (k in seq_len(16)) {
         pr <- (if (profiles16[k, "info"])    Pi else 1 - Pi) *
@@ -176,13 +178,13 @@ for (bi in seq_along(idx_by_bene)) {
         PP[k, ] <- pr
       }
       set(dt, sc, "dominated", sum(w * as.vector(cc$dom  %*% PP)))
-      set(dt, sc, "search",    sum(w * as.vector(srch16  %*% PP)))
+      set(dt, sc, "search",    sum(w * (1 - (1 - as.vector(srch16 %*% PP)) * (1 - Pr))))
       set(dt, sc, "consider",  sum(w * as.vector(cc$con  %*% PP)))
       set(dt, sc, "ec",        sum(w * as.vector(cc$ec   %*% PP)))
       set(dt, sc, "iv",        sum(w * as.vector(cc$iv   %*% PP)))
-      # Expected search cost: c_i (at this dose) times expected number of the four
-      # actions taken, integrated over the posterior draws.
-      set(dt, sc, "search_cost", sum(w * c_r * (Pi + Pw + Pp + Pb)))
+      # Expected search cost: c_i (at this dose) times the expected number of the
+      # five search actions taken, integrated over the posterior draws.
+      set(dt, sc, "search_cost", sum(w * c_r * (Pi + Pw + Pp + Pb + Pr)))
     }
     rows_out[[cc$i]] <- dt
   }

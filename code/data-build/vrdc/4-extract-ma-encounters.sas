@@ -1,10 +1,10 @@
 /* ------------------------------------------------------------ */
-/* TITLE:        MA encounter extraction — bene-year utilization */
+/* TITLE:        MA encounter extraction - bene-year utilization */
 /* PROJECT:      ma-search-costs                                 */
 /* INPUT:        ENRFPL<yr>.{IP,SNF,HHA,OP,CARRIER}_BASE_ENC      */
 /*               ENRFPL<yr>.{IP,SNF,HHA,OP}_REVENUE_ENC           */
 /*               ENRFPL<yr>.CARRIER_LINE_ENC                      */
-/* (DME omitted — not in this DUA.)                               */
+/* (DME omitted - not in this DUA.)                               */
 /* OUTPUT:       PL027710.ma_util_panel  (wide BENE_ID x year)    */
 /*               PL027710.ma_util_<svc>  (per-svc stacked panels) */
 /* ------------------------------------------------------------ */
@@ -19,7 +19,7 @@
 
 
 /* ============================================================ */
-/* 4a. Inpatient — stays + days                                  */
+/* 4a. Inpatient - stays + days                                  */
 /* ============================================================ */
 
 %MACRO ip_util(yr);
@@ -37,7 +37,7 @@
 
 
 /* ============================================================ */
-/* 4b. SNF — stays + days                                        */
+/* 4b. SNF - stays + days                                        */
 /* ============================================================ */
 
 %MACRO snf_util(yr);
@@ -55,7 +55,7 @@
 
 
 /* ============================================================ */
-/* 4c. HHA — episodes + visits (revenue REV_CNTR_UNIT_CNT)       */
+/* 4c. HHA - episodes + visits (revenue REV_CNTR_UNIT_CNT)       */
 /* ============================================================ */
 
 %MACRO hha_util(yr);
@@ -84,7 +84,7 @@
 
 
 /* ============================================================ */
-/* 4d. OP — visits, ER (rev_cntr 045X) split                     */
+/* 4d. OP - visits, ER (rev_cntr 045X) split                     */
 /* ------------------------------------------------------------ */
 /* One row per (BENE_ID, claim) so a multi-line outpatient stay  */
 /* with both ER and non-ER lines counts as a single ER visit.    */
@@ -116,11 +116,11 @@
 
 
 /* ============================================================ */
-/* 4e. Carrier — visits, PCP vs specialist (PRVDR_SPCLTY)        */
+/* 4e. Carrier - visits, PCP vs specialist (PRVDR_SPCLTY)        */
 /* ------------------------------------------------------------ */
 /* PCP specialty codes per CMS: 01 (general practice),           */
 /* 08 (family practice), 11 (internal medicine), 38 (geriatric). */
-/* Aggregate at line level — multiple lines per claim is fine    */
+/* Aggregate at line level - multiple lines per claim is fine    */
 /* because each line is its own service event for PBP purposes.  */
 /* ============================================================ */
 
@@ -220,7 +220,7 @@ PROC DELETE DATA=WORK.spine; RUN;
 /* 4h. Diagnostics                                                */
 /* ============================================================ */
 
-TITLE "MA encounter utilization — distinct benes by year";
+TITLE "MA encounter utilization - distinct benes by year";
 PROC SQL;
     SELECT year,
            COUNT(*)                                         AS n_bene_years,

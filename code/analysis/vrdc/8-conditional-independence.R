@@ -1,11 +1,11 @@
 # 8-conditional-independence.R — Robustness for the Stage-2 measurement model
 #
-# The four search actions (info / web / phone / handbook) are treated as
-# indicators of one latent search cost: each is a logit in the shared index
+# The five search indicators (info / web / phone / handbook / review frequency)
+# are indicators of one latent search cost: each is a logit in the shared index
 # B_i - c_i - kappa_a, and a bene-year's action likelihood is the PRODUCT of the
-# four action probabilities conditional on the person random effect, integrated
+# indicator probabilities conditional on the person random effect, integrated
 # over it (agents/model.md, "Measurement structure"). The load-bearing
-# assumption is CONDITIONAL INDEPENDENCE of the four actions given the search
+# assumption is CONDITIONAL INDEPENDENCE of the indicators given the search
 # cost — they co-move only through the shared latent and the random effect, with
 # no extra pairwise link (e.g. web/phone substitution).
 #
@@ -17,7 +17,7 @@
 #      each action pair, observed P(both) vs the model's implied P(both) under
 #      conditional independence. A large residual on a pair flags dependence the
 #      shared latent does not capture.
-#   2. Drop-one-action (re-estimate four times, each omitting one action). If
+#   2. Drop-one-action (re-estimate five times, each omitting one indicator). If
 #      the search-cost gammas barely move, no single action is driving them.
 #   3. Correlated-error relaxation on the web/phone pair (re-estimate once with
 #      one extra parameter rho that lets those two actions' errors co-vary,
@@ -93,19 +93,19 @@ cached_objective <- function(raw_fn, cache_path) {
 # product keeps only the actions flagged in `keep`. The choice stage is
 # untouched (dropping a search action does not affect the plan-choice
 # probability), so this reuses every choice-stage helper from script 3.
-loglik_actions_keep <- function(ai, aw, ap, br, th, B, c, keep) {
+loglik_actions_keep <- function(ai, aw, ap, br, rv, th, B, c, keep) {
   z  <- B - c
   lp <- function(act, kap) { p <- plogis(z - kap); log(act * p + (1 - act) * (1 - p) + 1e-12) }
-  ll <- numeric(length(z))
-  if (keep["info"])  ll <- ll + lp(ai, th$kappa_info)
-  if (keep["web"])   ll <- ll + lp(aw, th$kappa_web)
-  if (keep["phone"]) ll <- ll + lp(ap, th$kappa_phone)
-  if (keep["book"]) {
-    c1 <- th$kappa_book; c2 <- th$kappa_book + th$tau_gap
-    p_th <- plogis(z - c2); p_pt <- plogis(z - c1) - p_th; p_no <- 1 - plogis(z - c1)
-    p_book <- ifelse(br == 2L, p_th, ifelse(br == 1L, p_pt, p_no))
-    ll <- ll + log(p_book + 1e-12)
+  ordered_ll <- function(lev, k1, gap) {
+    hi <- plogis(z - (k1 + gap)); mid <- plogis(z - k1) - hi; lo <- 1 - plogis(z - k1)
+    log(ifelse(lev == 2L, hi, ifelse(lev == 1L, mid, lo)) + 1e-12)
   }
+  ll <- numeric(length(z))
+  if (keep["info"])   ll <- ll + lp(ai, th$kappa_info)
+  if (keep["web"])    ll <- ll + lp(aw, th$kappa_web)
+  if (keep["phone"])  ll <- ll + lp(ap, th$kappa_phone)
+  if (keep["book"])   ll <- ll + ordered_ll(br, th$kappa_book,   th$tau_gap)
+  if (keep["review"]) ll <- ll + ordered_ll(rv, th$kappa_review, th$tau_review_gap)
   ll
 }
 
@@ -124,7 +124,7 @@ loglik_drop <- function(theta, nu_draws, keep) {
     phi <- compute_phi(mkt, sal, compute_K(brow, th), brow)
     p   <- compute_choice_prob(v, phi)
     ll_choice[i] <- log(pmax(p[brow$choice_idx], 1e-12))
-    B_vec[i]     <- compute_search_benefit(mkt, v, sal)
+    B_vec[i]     <- compute_search_benefit(v, mkt$plan_kind == "FFS" | inc)
     logc_det[i]  <- compute_log_c_det(brow, th)
   }
   sigma <- exp(th$log_sigma_alpha); R <- length(nu_draws)
@@ -133,12 +133,12 @@ loglik_drop <- function(theta, nu_draws, keep) {
     rows <- idx_by_bene[[bi]]
     ch_sum <- sum(ll_choice[rows])
     ai <- bene$act_info[rows]; aw <- bene$act_web[rows]
-    ap <- bene$act_phone[rows]; br <- bene$book_read[rows]
+    ap <- bene$act_phone[rows]; br <- bene$book_read[rows]; rv <- bene$review_level[rows]
     Bw <- B_vec[rows]; ld <- logc_det[rows]
     draw <- numeric(R)
     for (r in seq_len(R)) {
       c_r <- exp(ld + sigma * nu_draws[r])
-      draw[r] <- sum(loglik_actions_keep(ai, aw, ap, br, th, Bw, c_r, keep))
+      draw[r] <- sum(loglik_actions_keep(ai, aw, ap, br, rv, th, Bw, c_r, keep))
     }
     m <- max(draw)
     ll_bene[bi] <- ch_sum + m + log(mean(exp(draw - m)))
@@ -171,7 +171,7 @@ loglik_corr <- function(theta_ext, nu_draws, om_draws) {
     phi <- compute_phi(mkt, sal, compute_K(brow, th), brow)
     p   <- compute_choice_prob(v, phi)
     ll_choice[i] <- log(pmax(p[brow$choice_idx], 1e-12))
-    B_vec[i]     <- compute_search_benefit(mkt, v, sal)
+    B_vec[i]     <- compute_search_benefit(v, mkt$plan_kind == "FFS" | inc)
     logc_det[i]  <- compute_log_c_det(brow, th)
   }
   sigma <- exp(th$log_sigma_alpha); R <- length(nu_draws); S <- length(om_draws)
@@ -182,7 +182,7 @@ loglik_corr <- function(theta_ext, nu_draws, om_draws) {
     rows <- idx_by_bene[[bi]]
     ch_sum <- sum(ll_choice[rows])
     ai <- bene$act_info[rows]; aw <- bene$act_web[rows]
-    ap <- bene$act_phone[rows]; br <- bene$book_read[rows]
+    ap <- bene$act_phone[rows]; br <- bene$book_read[rows]; rv <- bene$review_level[rows]
     Bw <- B_vec[rows]; ld <- logc_det[rows]
     draw <- numeric(R)
     for (r in seq_len(R)) {
@@ -190,7 +190,10 @@ loglik_corr <- function(theta_ext, nu_draws, om_draws) {
       c1 <- th$kappa_book; c2 <- th$kappa_book + th$tau_gap
       p_th <- plogis(z_r - c2); p_pt <- plogis(z_r - c1) - p_th; p_no <- 1 - plogis(z_r - c1)
       lbk  <- sum(log(ifelse(br == 2L, p_th, ifelse(br == 1L, p_pt, p_no)) + 1e-12))
-      la   <- sum(lp(ai, z_r - th$kappa_info)) + lbk
+      r1 <- th$kappa_review; r2 <- th$kappa_review + th$tau_review_gap
+      q_th <- plogis(z_r - r2); q_pt <- plogis(z_r - r1) - q_th; q_no <- 1 - plogis(z_r - r1)
+      lrv  <- sum(log(ifelse(rv == 2L, q_th, ifelse(rv == 1L, q_pt, q_no)) + 1e-12))
+      la   <- sum(lp(ai, z_r - th$kappa_info)) + lbk + lrv
       lwp  <- numeric(S)
       for (s in seq_len(S)) {
         zw <- z_r + rho * om_draws[s]
@@ -215,10 +218,10 @@ loglik_corr <- function(theta_ext, nu_draws, om_draws) {
 compute_pairwise_cooccurrence <- function(theta, nu_draws) {
   th <- unpack_theta(theta); n <- nrow(bene); R <- length(nu_draws)
   sigma <- exp(th$log_sigma_alpha)
-  acts <- c("info", "web", "phone", "book")
-  kap  <- c(th$kappa_info, th$kappa_web, th$kappa_phone, th$kappa_book)
+  acts <- c("info", "web", "phone", "book", "review")
+  kap  <- c(th$kappa_info, th$kappa_web, th$kappa_phone, th$kappa_book, th$kappa_review)
   Aobs <- cbind(bene$act_info, bene$act_web, bene$act_phone,
-                as.integer(bene$book_read > 0))
+                as.integer(bene$book_read > 0), as.integer(bene$review_level > 0))
   colnames(Aobs) <- acts
   pairs <- combn(acts, 2, simplify = FALSE)
   Jmod  <- matrix(0, n, length(pairs))
@@ -229,8 +232,8 @@ compute_pairwise_cooccurrence <- function(theta, nu_draws) {
     inc  <- brow$prior_plan_offered == 1L &
             !is.na(brow$prior_plan_id) & mkt$plan_id == brow$prior_plan_id
     v[inc] <- v[inc] + th$psi
-    B  <- compute_search_benefit(mkt, v, sal); ld <- compute_log_c_det(brow, th)
-    Pa <- matrix(0, R, 4, dimnames = list(NULL, acts))
+    B  <- compute_search_benefit(v, mkt$plan_kind == "FFS" | inc); ld <- compute_log_c_det(brow, th)
+    Pa <- matrix(0, R, length(acts), dimnames = list(NULL, acts))
     for (r in seq_len(R)) {
       z <- B - exp(ld + sigma * nu_draws[r])
       Pa[r, ] <- plogis(z - kap)
@@ -266,10 +269,11 @@ cat("Saved robust_cooccurrence.csv\n")
 # the handbook is dropped) at its theta_hat value — it is unidentified once its
 # action leaves the likelihood — and re-optimizes the rest from the warm start.
 drop_specs <- list(
-  drop_info  = list(keep = c(info = FALSE, web = TRUE,  phone = TRUE,  book = TRUE),  fix = "kappa_info"),
-  drop_web   = list(keep = c(info = TRUE,  web = FALSE, phone = TRUE,  book = TRUE),  fix = "kappa_web"),
-  drop_phone = list(keep = c(info = TRUE,  web = TRUE,  phone = FALSE, book = TRUE),  fix = "kappa_phone"),
-  drop_book  = list(keep = c(info = TRUE,  web = TRUE,  phone = TRUE,  book = FALSE), fix = c("kappa_book", "tau_gap"))
+  drop_info   = list(keep = c(info = FALSE, web = TRUE,  phone = TRUE,  book = TRUE,  review = TRUE),  fix = "kappa_info"),
+  drop_web    = list(keep = c(info = TRUE,  web = FALSE, phone = TRUE,  book = TRUE,  review = TRUE),  fix = "kappa_web"),
+  drop_phone  = list(keep = c(info = TRUE,  web = TRUE,  phone = FALSE, book = TRUE,  review = TRUE),  fix = "kappa_phone"),
+  drop_book   = list(keep = c(info = TRUE,  web = TRUE,  phone = TRUE,  book = FALSE, review = TRUE),  fix = c("kappa_book", "tau_gap")),
+  drop_review = list(keep = c(info = TRUE,  web = TRUE,  phone = TRUE,  book = TRUE,  review = FALSE), fix = c("kappa_review", "tau_review_gap"))
 )
 
 for (nm in names(drop_specs)) {
@@ -338,9 +342,10 @@ if (file.exists(corr_file)) {
 # The search-cost gammas and dispersion are the object that has to be stable for
 # conditional independence to be innocuous — they carry the counterfactual.
 report_params <- c("gamma_0", "gamma_inc", "gamma_educ", "gamma_age", "gamma_dual",
-                   "gamma_adi", "gamma_hb", "gamma_exp", "log_sigma_alpha")
+                   "gamma_adi", "gamma_hb", "gamma_exp", "gamma_easycmp", "gamma_infcmp",
+                   "log_sigma_alpha")
 summ <- data.table(parameter = report_params, main = theta_hat[report_params])
-for (nm in c("drop_info", "drop_web", "drop_phone", "drop_book", "corr_webphone")) {
+for (nm in c("drop_info", "drop_web", "drop_phone", "drop_book", "drop_review", "corr_webphone")) {
   f <- file.path(results_dir, paste0("robust_", nm, ".csv"))
   if (!file.exists(f)) next
   v <- fread(f); vv <- setNames(v$estimate, v$parameter)

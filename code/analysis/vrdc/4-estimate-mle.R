@@ -32,7 +32,7 @@ b_hand   <- c(b0 = 0, b_info = 0.30, b_web = 0.80, b_phone = 0.30, b_book = 0.30
 
 # --- Stage 1: conditional logit on plan choice (phi = 1) ---
 stage1_negll <- function(u) {
-  th <- list(alpha = u[1], beta = u[2], xi_FFS = u[3], psi = u[4])
+  th <- list(alpha = u[1], beta = u[2], xi_FFS = u[3], psi = u[4], delta = 0)
   ll <- 0
   for (i in seq_len(nrow(bene))) {
     brow <- bene_rows[[i]]; mkt <- markets[[brow$market_id]]
@@ -53,7 +53,7 @@ names(s1) <- c("alpha", "beta", "xi_FFS", "psi")
 cat("  "); print(round(s1, 4))
 
 # --- Precompute B_i at the stage-1 utilities and hand-set awareness ---
-th_B <- c(as.list(s1), lam_hand)
+th_B <- c(as.list(s1), list(delta = 0), lam_hand)
 B_init <- numeric(nrow(bene))
 for (i in seq_len(nrow(bene))) {
   brow <- bene_rows[[i]]; mkt <- markets[[brow$market_id]]
@@ -62,7 +62,7 @@ for (i in seq_len(nrow(bene))) {
          !is.na(brow$prior_plan_id) & mkt$plan_id == brow$prior_plan_id
   v[inc] <- v[inc] + th_B$psi
   sal <- compute_salience(mkt, market_prom[[brow$market_id]], brow, th_B)
-  B_init[i] <- compute_search_benefit(mkt, v, sal)
+  B_init[i] <- compute_search_benefit(v, mkt$plan_kind == "FFS" | inc)
 }
 
 # --- Stage 2: pooled action logit (sigma = 0, B fixed). Same action-likelihood
@@ -93,11 +93,12 @@ cat("  "); print(round(s2, 4))
 
 # --- Assemble theta0 (order must match theta_names) ---
 theta0 <- c(
-  s1["alpha"], s1["beta"], s1["xi_FFS"], s1["psi"],
+  s1["alpha"], s1["beta"], s1["xi_FFS"], s1["psi"], 0.05,
   s2["gamma_0"], s2["gamma_inc"], s2["gamma_educ"], s2["gamma_age"],
-  s2["gamma_dual"], s2["gamma_adi"], s2["gamma_hb"], s2["gamma_exp"],
+  s2["gamma_dual"], s2["gamma_adi"], s2["gamma_hb"], s2["gamma_exp"], 0, 0,
   log(0.5),
   s2["kappa_info"], s2["kappa_web"], s2["kappa_phone"], s2["kappa_book"], s2["tau_gap"],
+  s2["kappa_book"], s2["tau_gap"],
   b_hand["b0"], b_hand["b_info"], b_hand["b_web"], b_hand["b_phone"], b_hand["b_book"],
   lam_hand$lambda_PF_0, lam_hand$lambda_broker_0
 )

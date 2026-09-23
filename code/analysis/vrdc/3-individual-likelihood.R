@@ -25,32 +25,36 @@ N_SIM_DRAWS <- 50L   # nu draws per beneficiary; common random numbers set in 5
 # ---- One-time prep: incumbency flag + NA guards ---------------------------
 bene[, prior_plan_offered := as.integer(has_prior_year == 1L & incumbent_bene_year == 1L)]
 for (col in c("log_inc_dm","educ_yrs_dm","age_dm","is_dual","adi_dm",
-              "book_understood_dm","tenure_dm",
-              "act_info","act_web","act_phone","book_read",
+              "book_understood_dm","tenure_dm","easy_compare_dm","enough_info_dm",
+              "act_info","act_web","act_phone","book_read","review_level",
               "KCHIHELP_help","KCHIHELP_delegate"))
   set(bene, which(is.na(bene[[col]])), col, 0)
 
 
 # ---- Parameter layout (25) ------------------------------------------------
 theta_names <- c(
-  # Utility (4)
-  "alpha", "beta", "xi_FFS", "psi",
-  # Search-cost covariates (8): + comprehension (hb) + tenure (exp)
+  # Utility (5): + delta on cost variance (risk term)
+  "alpha", "beta", "xi_FFS", "psi", "delta",
+  # Search-cost covariates (10): + comprehension (hb), tenure (exp),
+  #   easy-to-compare (KNCOVOPT), enough-info-to-compare (KNCOVINF)
   "gamma_0", "gamma_inc", "gamma_educ", "gamma_age", "gamma_dual", "gamma_adi",
-  "gamma_hb", "gamma_exp",
+  "gamma_hb", "gamma_exp", "gamma_easycmp", "gamma_infcmp",
   # Search-cost dispersion (1)
   "log_sigma_alpha",
-  # Action baselines (4) + handbook ordered cutpoint gap (1)
+  # Action baselines (4) + handbook gap (1) + review-frequency indicator (2)
   "kappa_info", "kappa_web", "kappa_phone", "kappa_book", "tau_gap",
+  "kappa_review", "tau_review_gap",
   # Consideration breadth (5)
   "b0", "b_info", "b_web", "b_phone", "b_book",
   # Awareness weights (2): market-level PF constant + broker constant
   "lambda_PF_0", "lambda_broker_0"
 )
 
-# Bounds: alpha, tau_gap, and both lambda constants >= 0; everything else free.
+# Bounds: alpha, delta, both ordered gaps, and both lambda constants >= 0;
+# everything else free.
 theta_lower <- setNames(rep(-Inf, length(theta_names)), theta_names)
-theta_lower[c("alpha","tau_gap","lambda_PF_0","lambda_broker_0")] <- 0
+theta_lower[c("alpha","delta","tau_gap","tau_review_gap",
+              "lambda_PF_0","lambda_broker_0")] <- 0
 theta_upper <- setNames(rep(Inf, length(theta_names)), theta_names)
 
 unpack_theta <- function(theta) {
@@ -66,9 +70,10 @@ unpack_theta <- function(theta) {
 compute_bene_utility <- function(mkt, mc, vc, th) {
   v <- numeric(nrow(mkt))
   is_ffs <- mkt$plan_kind == "FFS"; is_ma <- !is_ffs
-  mcs <- mc / 1e3
-  v[is_ffs] <- -th$alpha * mcs[is_ffs] + th$xi_FFS
-  v[is_ma]  <- -th$alpha * mcs[is_ma] +
+  mcs <- mc / 1e3        # cost in $000s
+  vcs <- vc / 1e6        # cost variance in ($000s)^2
+  v[is_ffs] <- -th$alpha * mcs[is_ffs] - th$delta * vcs[is_ffs] + th$xi_FFS
+  v[is_ma]  <- -th$alpha * mcs[is_ma]  - th$delta * vcs[is_ma] +
                 th$beta * ifelse(is.na(mkt$Star_Rating[is_ma]), 0,
                                  mkt$Star_Rating[is_ma] - 3.5)
   v
@@ -129,13 +134,14 @@ compute_choice_prob <- function(v, phi) {
   num / sum(num)
 }
 
-# ---- Search benefit B (nu-independent) ------------------------------------
-compute_search_benefit <- function(mkt, v, sal) {
-  if (!any(sal$is_ma)) return(0)
-  w <- sal$w / sal$W
-  ev_ma  <- sum(w[sal$is_ma] * exp(v[sal$is_ma]))
-  ev_ffs <- exp(v[mkt$plan_kind == "FFS"])[1]
-  log(ev_ffs + ev_ma) - log(ev_ffs)
+# ---- Search benefit B: value of considering the whole menu over the ---------
+# no-search default (FFS + incumbent). E[max over all plans] - E[max over the
+# default set], in log-sum-exp form; larger when the plans differ more from the
+# default in how well they fit the bene. Built from expected-cost utilities, so
+# it varies across counties with the local menu.
+compute_search_benefit <- function(v, default) {
+  iv <- function(x) { mx <- max(x); log(sum(exp(x - mx))) + mx }
+  iv(v) - iv(v[default])
 }
 
 # ---- Deterministic part of log search cost (no nu) ------------------------
@@ -144,19 +150,22 @@ compute_log_c_det <- function(brow, th) {
     th$gamma_inc  * brow$log_inc_dm + th$gamma_educ * brow$educ_yrs_dm +
     th$gamma_age  * brow$age_dm     + th$gamma_dual * brow$is_dual +
     th$gamma_adi  * brow$adi_dm     + th$gamma_hb   * brow$book_understood_dm +
-    th$gamma_exp  * brow$tenure_dm
+    th$gamma_exp  * brow$tenure_dm  +
+    th$gamma_easycmp * brow$easy_compare_dm + th$gamma_infcmp * brow$enough_info_dm
 }
 
 # ---- Action log-likelihood (vectorized over a bene's waves) ---------------
 # ai/aw/ap binary; br ordered 0/1/2; B, c, and these are vectors over waves.
-loglik_actions <- function(ai, aw, ap, br, th, B, c) {
+loglik_actions <- function(ai, aw, ap, br, rv, th, B, c) {
   z <- B - c
   lp <- function(act, kap) { p <- plogis(z - kap); log(act * p + (1 - act) * (1 - p) + 1e-12) }
-  ll <- lp(ai, th$kappa_info) + lp(aw, th$kappa_web) + lp(ap, th$kappa_phone)
-  c1 <- th$kappa_book; c2 <- th$kappa_book + th$tau_gap
-  p_th <- plogis(z - c2); p_pt <- plogis(z - c1) - p_th; p_no <- 1 - plogis(z - c1)
-  p_book <- ifelse(br == 2L, p_th, ifelse(br == 1L, p_pt, p_no))
-  ll + log(p_book + 1e-12)
+  ordered_ll <- function(lev, k1, gap) {   # 3-level ordered: 0 / 1 / 2
+    hi <- plogis(z - (k1 + gap)); mid <- plogis(z - k1) - hi; lo <- 1 - plogis(z - k1)
+    log(ifelse(lev == 2L, hi, ifelse(lev == 1L, mid, lo)) + 1e-12)
+  }
+  lp(ai, th$kappa_info) + lp(aw, th$kappa_web) + lp(ap, th$kappa_phone) +
+    ordered_ll(br, th$kappa_book,   th$tau_gap) +
+    ordered_ll(rv, th$kappa_review, th$tau_review_gap)
 }
 
 
@@ -177,7 +186,7 @@ compute_individual_loglik <- function(theta, nu_draws, return_components = FALSE
     phi <- compute_phi(mkt, sal, compute_K(brow, th), brow)
     p   <- compute_choice_prob(v, phi)
     ll_choice[i] <- log(pmax(p[brow$choice_idx], 1e-12))
-    B_vec[i]     <- compute_search_benefit(mkt, v, sal)
+    B_vec[i]     <- compute_search_benefit(v, mkt$plan_kind == "FFS" | inc)
     logc_det[i]  <- compute_log_c_det(brow, th)
   }
 
@@ -187,12 +196,12 @@ compute_individual_loglik <- function(theta, nu_draws, return_components = FALSE
     rows <- idx_by_bene[[bi]]
     ch_sum <- sum(ll_choice[rows])
     ai <- bene$act_info[rows]; aw <- bene$act_web[rows]
-    ap <- bene$act_phone[rows]; br <- bene$book_read[rows]
+    ap <- bene$act_phone[rows]; br <- bene$book_read[rows]; rv <- bene$review_level[rows]
     Bw <- B_vec[rows]; ld <- logc_det[rows]
     draw <- numeric(R)
     for (r in seq_len(R)) {
       c_r <- exp(ld + sigma * nu_draws[r])
-      draw[r] <- sum(loglik_actions(ai, aw, ap, br, th, Bw, c_r))
+      draw[r] <- sum(loglik_actions(ai, aw, ap, br, rv, th, Bw, c_r))
     }
     m <- max(draw)
     ll_bene[bi] <- ch_sum + m + log(mean(exp(draw - m)))
@@ -223,12 +232,13 @@ compute_predictions <- function(theta, nu_draws) {
     p_ffs[i] <- sum(p[is_ffs])
     pma <- sum(p[is_ma]); p_inc_ma[i] <- if (pma > 0) sum(p[inc & is_ma]) / pma else 0
 
-    B <- compute_search_benefit(mkt, v, sal); ld <- compute_log_c_det(brow, th)
+    B <- compute_search_benefit(v, mkt$plan_kind == "FFS" | inc); ld <- compute_log_c_det(brow, th)
     pno <- numeric(R)
     for (r in seq_len(R)) {
       z <- B - exp(ld + sigma * nu_draws[r])
       pno[r] <- (1 - plogis(z - th$kappa_info)) * (1 - plogis(z - th$kappa_web)) *
-                (1 - plogis(z - th$kappa_phone)) * (1 - plogis(z - th$kappa_book))
+                (1 - plogis(z - th$kappa_phone)) * (1 - plogis(z - th$kappa_book)) *
+                (1 - plogis(z - th$kappa_review))
     }
     p_search[i] <- 1 - mean(pno)
   }
@@ -237,7 +247,8 @@ compute_predictions <- function(theta, nu_draws) {
     wgt        = bene$wgt_full_sample, is_dual = bene$is_dual, has_bach = bene$has_bach,
     p_search   = p_search,
     obs_search = as.integer(bene$act_info == 1 | bene$act_web == 1 |
-                            bene$act_phone == 1 | bene$book_read > 0),
+                            bene$act_phone == 1 | bene$book_read > 0 |
+                            bene$review_level > 0),
     p_ffs      = p_ffs,    obs_ffs    = bene$is_ffs_admin,
     p_inc_ma   = p_inc_ma,
     obs_inc_ma = as.integer(bene$chosen_pid == bene$prior_plan_id),

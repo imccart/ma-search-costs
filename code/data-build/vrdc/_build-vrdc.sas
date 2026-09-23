@@ -7,14 +7,14 @@
 /* workflow is to open and run each script individually in       */
 /* order: _config.sas first, then 1, 2, 3, 4. Each numbered      */
 /* script is standalone and references libraries directly        */
-/* (PL027710, MBSF, MCBS<yr>, MCBSXWLK) — no relative paths or   */
+/* (PL027710, MBSF, MCBS<yr>, MCBSXWLK) - no relative paths or   */
 /* %INCLUDE chains.                                              */
 /*                                                                */
 /* Use this driver only if you want a single batch run via       */
 /* `sas -SYSIN _build-vrdc.sas` or equivalent. Edit the          */
 /* `code_dir` macro below to match the filesystem location       */
 /* where you placed the .sas scripts on the seat (NOT the        */
-/* PL027710 library — code and library can live in different     */
+/* PL027710 library - code and library can live in different     */
 /* directories).                                                  */
 /*                                                                */
 /* Pipeline:                                                      */
@@ -26,7 +26,7 @@
 /*   6. 5-extract-ffs-claims.sas     FFS claims utilization + obs C*/
 /*                                                                  */
 /* CSV export off the seat is done manually via the CMS clearance  */
-/* protocol — there is no in-pipeline export script.                */
+/* protocol - there is no in-pipeline export script.                */
 /* ------------------------------------------------------------ */
 
 /* Edit this to match where you placed the .sas files on the seat.   */

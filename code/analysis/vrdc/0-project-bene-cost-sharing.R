@@ -2,8 +2,12 @@
 #
 # Replaces the population-level mean_cost / var_cost columns from
 # structural_panel.csv (which were built from stylized utilization profiles)
-# with bene-specific cost-sharing projections built from each bene's actual
-# claims utilization × each plan's PBP cost-sharing schedule.
+# with bene-specific cost-sharing projections. Utilization is each bene's
+# EXPECTED use at the time of choice — the mean of their own realized use over
+# the prior up-to-three years, or, for benes with no prior claims, a Poisson
+# prediction from pre-choice traits — priced against each plan's PBP cost-
+# sharing schedule. Expected (not realized same-year) use avoids the look-ahead
+# and plan-endogeneity of pricing on the choice year's own claims.
 #
 # For MA benes: utilization comes from the MA encounter panel (script 4).
 # For FFS benes: utilization comes from the FFS claims panel (script 5).
@@ -19,7 +23,7 @@
 #
 # Output:
 #   data/output/bene_cost_sharing.csv       one row per (BENE_ID, plan_id, year)
-#                                           with EC[c|i,j] and Var_C_j
+#                                           with EC[c|i,j] and Var_C_ij
 #
 # Service categories (matched to the existing dominance pipeline at
 # code/data-build/_utilization-profiles.R):
@@ -110,85 +114,103 @@ bene[, county_fips := str_pad(state_cnty_fips, 5, side = "left", pad = "0")]
 ma_util  <- fread(ma_util_path)
 ffs_util <- fread(ffs_util_path)
 
-# Stack into one util_panel keyed on (BENE_ID, year). MA/FFS are mutually
-# exclusive in any bene-year (a bene is either MA or FFS for the year).
-util <- rbindlist(list(
-  ma_util [, .(BENE_ID, year, n_car_pcp_lines, n_car_spec_lines,
-               n_op_visits, n_op_er_visits, n_ip_days)],
-  ffs_util[, .(BENE_ID, year, n_car_pcp_lines, n_car_spec_lines,
-               n_op_visits, n_op_er_visits, n_ip_days)]
+count_cols <- c("n_car_pcp_lines", "n_car_spec_lines",
+                "n_op_visits", "n_op_er_visits", "n_ip_days")
+
+# Realized utilization history, one row per (BENE_ID, year). FFS spans
+# 2012-2018 and MA 2015-2018; a bene is FFS xor MA in a year, so the two
+# panels never collide on (BENE_ID, year).
+util_hist <- rbindlist(list(
+  ma_util [, c("BENE_ID", "year", count_cols), with = FALSE],
+  ffs_util[, c("BENE_ID", "year", count_cols), with = FALSE]
 ), use.names = TRUE)
 
-util[, `:=`(
-  n_op_other = pmax(n_op_visits - n_op_er_visits, 0)
-)]
+# Expected use = each bene's own realized use over the prior up-to-three years;
+# each history year feeds choice years t = year+1..+3. One draw per prior year.
+hist_long <- util_hist[rep(seq_len(.N), each = 3L)]
+hist_long[, year := year + rep(1:3, times = nrow(util_hist))]
+hist_long <- hist_long[year %between% c(2015L, 2018L)]
+draws_prior <- merge(hist_long, bene[, .(BENE_ID, year, county_fips)],
+                     by = c("BENE_ID", "year"))
 
-# ---------------------------------------------------------------------------
-# Bene-side utilization, attached to (BENE_ID, year)
-# ---------------------------------------------------------------------------
+# Fallback where a bene-year has no prior use: Poisson prediction of each
+# service count from pre-choice traits, fit where same-year realized use
+# exists. One draw per such bene-year; the bene's own realized use never enters.
+trait_cols <- c("age", "srh", "health_vs_year_ago", "dual_annual",
+                "income_cat", "education_cat", "adi_raw")
+traits <- fread(bene_path, select = c("BENE_ID", "year", trait_cols))
+for (tc in trait_cols) traits[, (tc) := as.numeric(get(tc))]
+for (tc in trait_cols)
+  traits[is.na(get(tc)), (tc) := traits[, median(get(tc), na.rm = TRUE)]]
 
-bene_util <- merge(
-  bene, util, by = c("BENE_ID", "year"), all.x = TRUE
-)
-
-# Benes with no claims rows in either panel get zero utilization (very low
-# users — keep them rather than dropping).
-util_cols <- c("n_car_pcp_lines", "n_car_spec_lines",
-               "n_op_visits", "n_op_er_visits", "n_op_other", "n_ip_days")
-for (c in util_cols) {
-  bene_util[is.na(get(c)), (c) := 0]
+fit_dt   <- merge(bene[, .(BENE_ID, year)], util_hist, by = c("BENE_ID", "year"))
+fit_dt   <- merge(fit_dt, traits, by = c("BENE_ID", "year"))
+no_prior <- fsetdiff(bene[, .(BENE_ID, year)], unique(draws_prior[, .(BENE_ID, year)]))
+draws_fb <- merge(no_prior, bene[, .(BENE_ID, year, county_fips)], by = c("BENE_ID", "year"))
+draws_fb <- merge(draws_fb, traits, by = c("BENE_ID", "year"))
+for (col in count_cols) {
+  m <- glm(reformulate(trait_cols, response = col), data = fit_dt, family = poisson())
+  draws_fb[, (col) := predict(m, newdata = draws_fb, type = "response")]
 }
+draws_fb[, (trait_cols) := NULL]
 
-cat(sprintf("Bene-util rows: %d\n", nrow(bene_util)))
-cat(sprintf("Benes with zero utilization: %d (%.1f%%)\n",
-            bene_util[, sum(n_car_pcp_lines + n_car_spec_lines + n_op_visits + n_ip_days == 0)],
-            100 * bene_util[, mean(n_car_pcp_lines + n_car_spec_lines + n_op_visits + n_ip_days == 0)]))
+draws <- rbindlist(list(draws_prior, draws_fb), use.names = TRUE)
+draws[, n_op_other := pmax(n_op_visits - n_op_er_visits, 0)]
 
-# ---------------------------------------------------------------------------
-# Bene x plan cartesian inside (county_fips, year). One row per
-# (BENE_ID, plan_id, year). EC[c|i,j] = annual premium + min(MOOP, deductible
-# + service OOP).
-# ---------------------------------------------------------------------------
+# Expected cost per (bene, plan): mean of the bene's own draws priced under
+# every plan in their market.
+setkey(draws, county_fips, year)
+setkey(pbp_sched, county_fips, year)
+priced <- draws[pbp_sched, on = .(county_fips, year), nomatch = NULL, allow.cartesian = TRUE]
+priced[, oop  := n_car_pcp_lines * pcp_per_event + n_car_spec_lines * spec_per_event +
+                 n_op_other * op_per_event + n_op_er_visits * er_per_event +
+                 n_ip_days * ip_per_day]
+priced[, cost := premium_annual + pmin(ded_total + oop, moop_eff)]
+bp <- priced[, .(EC = mean(cost)), by = .(BENE_ID, year, county_fips, plan_id)]
 
-setkey(bene_util,  county_fips, year)
-setkey(pbp_sched,  county_fips, year)
+# Risk cell: decile of the bene's expected annual cost, from their own expected
+# use. The variance below is the spread among cell-mates (Abaluck-Gruber risk
+# cells), not the bene's own 2-3 prior years, which are too few to identify it.
+bene_use <- draws[, lapply(.SD, mean), by = .(BENE_ID, year, county_fips),
+                  .SDcols = count_cols]
+bene_use[, use_index := n_car_pcp_lines * allowed_pcp + n_car_spec_lines * allowed_spec +
+                        n_op_visits * allowed_op + n_op_er_visits * allowed_er +
+                        n_ip_days * allowed_ip_day]
+bene_use[, cell := cut(frank(use_index, ties.method = "first"), breaks = 10,
+                       labels = FALSE, include.lowest = TRUE)]
 
-bp <- bene_util[pbp_sched, on = .(county_fips, year),
-                nomatch = NULL, allow.cartesian = TRUE]
+# Cell cost variance: cell-mates' realized same-year use (up to 100 per cell),
+# priced under each distinct cost-sharing schedule (premium drops out of a
+# variance). The spread across peers is the cell's risk for that schedule.
+peers <- merge(util_hist, bene_use[, .(BENE_ID, year, cell)], by = c("BENE_ID", "year"))
+peers[, n_op_other := pmax(n_op_visits - n_op_er_visits, 0)]
+setkey(peers, NULL)
+set.seed(1)
+peers <- peers[, .SD[sample(.N, min(.N, 100L))], by = cell,
+               .SDcols = c(count_cols, "n_op_other")]
 
-bp[, `:=`(
-  oop_services = n_car_pcp_lines  * pcp_per_event
-               + n_car_spec_lines * spec_per_event
-               + n_op_other       * op_per_event
-               + n_op_er_visits   * er_per_event
-               + n_ip_days        * ip_per_day,
-  oop_total    = NA_real_,
-  EC           = NA_real_
-)]
-bp[, oop_total  := ded_total + oop_services]
-bp[, EC         := premium_annual + pmin(oop_total, moop_eff)]
+sched_cols <- c("pcp_per_event", "spec_per_event", "op_per_event", "er_per_event",
+                "ip_per_day", "ded_total", "moop_eff")
+sched <- unique(pbp_sched[, ..sched_cols])
+sched[, sched_id := .I]
 
-cat(sprintf("\nBene x plan rows: %d (uniqueN benes %d, plans %d)\n",
-            nrow(bp), uniqueN(bp$BENE_ID), uniqueN(bp$plan_id)))
+peers[, jk := 1L]; sched[, jk := 1L]
+pv <- peers[sched, on = "jk", allow.cartesian = TRUE]
+pv[, cost := pmin(ded_total +
+             n_car_pcp_lines * pcp_per_event + n_car_spec_lines * spec_per_event +
+             n_op_other * op_per_event + n_op_er_visits * er_per_event +
+             n_ip_days * ip_per_day, moop_eff)]
+schedvar <- pv[, .(Var_C_ij = var(cost)), by = .(cell, sched_id)]
 
-# ---------------------------------------------------------------------------
-# Var(C|j) — variance of EC across benes in plan j's market pool. Computed
-# at the plan_id x year level (ignoring county heterogeneity within plan,
-# which is small for non-regional plans).
-# ---------------------------------------------------------------------------
+# Attach EC and the cell variance, write.
+pbp_v <- merge(pbp_sched, sched, by = sched_cols)
+bp <- merge(bp, bene_use[, .(BENE_ID, year, cell)], by = c("BENE_ID", "year"))
+bp <- merge(bp, pbp_v[, .(plan_id, county_fips, year, sched_id)],
+            by = c("plan_id", "county_fips", "year"))
+bp <- merge(bp, schedvar, by = c("cell", "sched_id"), all.x = TRUE)
+bp[is.na(Var_C_ij), Var_C_ij := schedvar[, median(Var_C_ij, na.rm = TRUE)]]
+bp <- merge(bp, bene[, .(BENE_ID, year, BASEID)], by = c("BENE_ID", "year"))
 
-var_j <- bp[, .(Var_C_j = var(EC), n_pool = .N), by = .(plan_id, year)]
-bp <- merge(bp, var_j, by = c("plan_id", "year"), all.x = TRUE)
-
-cat(sprintf("\nDistribution of EC across (bene, plan) pairs:\n"))
-print(summary(bp$EC))
-cat(sprintf("\nDistribution of sqrt(Var_C_j) across plans:\n"))
-print(summary(sqrt(var_j$Var_C_j)))
-
-# ---------------------------------------------------------------------------
-# Write checkpoint — long format keyed on (BENE_ID, plan_id, year)
-# ---------------------------------------------------------------------------
-
-out <- bp[, .(BENE_ID, BASEID, year, county_fips, plan_id, EC, Var_C_j, n_pool)]
+out <- bp[, .(BENE_ID, BASEID, year, county_fips, plan_id, EC, Var_C_ij, cell)]
 fwrite(out, out_path)
-cat(sprintf("\nWrote %s (%d rows)\n", out_path, nrow(out)))
+cat(sprintf("Wrote %s: %d rows, %d benes\n", out_path, nrow(out), uniqueN(out$BENE_ID)))

@@ -102,6 +102,19 @@ bene <- bene %>%
       book_read_amount == 2 ~ 1L,    # read parts        (ASSUMED)
       TRUE                  ~ 0L     # not at all / missing
     ),
+    # Review frequency (KNCOVREV): ordered search intensity, 0 none / 1 occasional
+    # / 2 yearly. Signup-only and just-signed-up categories map to 0.
+    review_level = case_when(
+      review_options_freq == 1     ~ 2L,   # at least once a year
+      review_options_freq %in% 2:3 ~ 1L,   # every few years / rarely
+      TRUE                         ~ 0L
+    ),
+    # Ease of comparing (KNCOVOPT) and info adequacy (KNCOVINF): higher = harder
+    # / less info = higher search cost. "Doesn't make decisions" (5) -> NA.
+    easy_compare_dm = if_else(as.numeric(easy_compare_options)   == 5, NA_real_,
+                              as.numeric(easy_compare_options)),
+    enough_info_dm  = if_else(as.numeric(enough_info_to_compare) == 5, NA_real_,
+                              as.numeric(enough_info_to_compare)),
     # Handbook comprehension difficulty (KBOKUNDR) and MA tenure (years enrolled),
     # demeaned in the imputation block below.
     book_understood_dm = as.numeric(book_understood),
@@ -141,7 +154,12 @@ bene <- bene %>%
                           book_understood_dm - mean(book_understood_dm, na.rm = TRUE)),
     tenure_dm          = if_else(is.na(tenure_dm), 0,
                           tenure_dm - mean(tenure_dm, na.rm = TRUE)),
-    book_read          = if_else(is.na(book_read), 0L, book_read)
+    easy_compare_dm    = if_else(is.na(easy_compare_dm), 0,
+                          easy_compare_dm - mean(easy_compare_dm, na.rm = TRUE)),
+    enough_info_dm     = if_else(is.na(enough_info_dm), 0,
+                          enough_info_dm - mean(enough_info_dm, na.rm = TRUE)),
+    book_read          = if_else(is.na(book_read), 0L, book_read),
+    review_level       = if_else(is.na(review_level), 0L, review_level)
   )
 
 
@@ -209,8 +227,8 @@ message(sprintf("Plans per bene-year: median=%d, mean=%.1f, max=%d",
 # 4b. Inner-join bene-specific cost-sharing (EC and Var_C from script 0)
 # ---------------------------------------------------------------------------
 
-ec <- fread(ec_path, select = c("BENE_ID", "year", "plan_id", "EC", "Var_C_j"))
-setnames(ec, c("EC", "Var_C_j"), c("mean_cost", "var_cost"))
+ec <- fread(ec_path, select = c("BENE_ID", "year", "plan_id", "EC", "Var_C_ij"))
+setnames(ec, c("EC", "Var_C_ij"), c("mean_cost", "var_cost"))
 
 n_before <- nrow(bcp)
 bcp <- merge(bcp, ec, by = c("BENE_ID", "year", "plan_id"), all.x = TRUE)

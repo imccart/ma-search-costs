@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------ */
-/* TITLE:        FFS claims extraction — bene-year utilization   */
+/* TITLE:        FFS claims extraction - bene-year utilization   */
 /*               and observed Part A/B cost-sharing              */
 /* PROJECT:      ma-search-costs                                 */
 /* INPUT:        RIF<yyyy>.INPATIENT_CLAIMS_<MM>                 */
@@ -42,17 +42,26 @@
 /* 5a. FFS bene lookup (analytic sample only)                    */
 /* ============================================================ */
 
+/* Sample benes' FFS bene-years across the full claims range      */
+/* (2012-2018). The sample is defined by bene_panel (2015-2018    */
+/* MCBS respondents); their FFS status in the 2012-2014 history   */
+/* years comes from bene_mbsf_panel, which now extends back to    */
+/* 2012. Only FFS bene-years are pulled, so a year the bene was   */
+/* in MA contributes no (incomplete) FFS claims.                  */
 PROC SQL;
     CREATE TABLE WORK.ffs_benes AS
-    SELECT BENE_ID, year
-    FROM PL027710.bene_panel
-    WHERE is_ffs_mbsf = 1;
+    SELECT m.BENE_ID, m.year
+    FROM PL027710.bene_mbsf_panel AS m
+    INNER JOIN (SELECT DISTINCT BENE_ID FROM PL027710.bene_panel) AS s
+        ON m.BENE_ID = s.BENE_ID
+    WHERE m.is_ffs = 1
+      AND m.year BETWEEN &claims_start AND &claims_end;
 QUIT;
 %row_count(WORK.ffs_benes, FFS bene-years);
 
 
 /* ============================================================ */
-/* 5b. IP — INPATIENT_CLAIMS (12-month stack)                    */
+/* 5b. IP - INPATIENT_CLAIMS (12-month stack)                    */
 /* ------------------------------------------------------------ */
 /* Interim bills: a single stay may span multiple monthly claims */
 /* sharing one CLM_ADMSN_DT. COUNT DISTINCT CLM_ADMSN_DT counts  */
@@ -81,7 +90,7 @@ QUIT;
 
 
 /* ============================================================ */
-/* 5c. SNF — SNF_CLAIMS (12-month stack)                          */
+/* 5c. SNF - SNF_CLAIMS (12-month stack)                          */
 /* ------------------------------------------------------------ */
 /* Same field structure as INPATIENT_CLAIMS. Part A cost-sharing */
 /* in NCH_IP_TOT_DDCTN_AMT.                                      */
@@ -106,7 +115,7 @@ QUIT;
 
 
 /* ============================================================ */
-/* 5d. HHA — HHA_CLAIMS + HHA_REVENUE                             */
+/* 5d. HHA - HHA_CLAIMS + HHA_REVENUE                             */
 /* ------------------------------------------------------------ */
 /* Visit count = SUM(REV_CNTR_UNIT_CNT) per CLM_ID.              */
 /* HHA carries no FFS bene cost-sharing (per existing pipeline   */
@@ -146,7 +155,7 @@ QUIT;
 
 
 /* ============================================================ */
-/* 5e. OP — OUTPATIENT_CLAIMS + OUTPATIENT_REVENUE                */
+/* 5e. OP - OUTPATIENT_CLAIMS + OUTPATIENT_REVENUE                */
 /* ------------------------------------------------------------ */
 /* ER flag from REV_CNTR codes 0450-0459. Bene cost-sharing on   */
 /* the base claim file: NCH_BENE_PTB_DDCTBL_AMT +                */
@@ -186,7 +195,7 @@ QUIT;
 
 
 /* ============================================================ */
-/* 5f. Carrier — BCARRIER_LINE, per-month aggregation             */
+/* 5f. Carrier - BCARRIER_LINE, per-month aggregation             */
 /* ------------------------------------------------------------ */
 /* Annual stack of BCARRIER_LINE is too big for WORK. Aggregate  */
 /* monthly to FFS benes, then re-aggregate to bene-year.         */
@@ -246,7 +255,7 @@ QUIT;
 /* ============================================================ */
 
 %MACRO pull_all_ffs;
-    %DO yr = &mcbs_start %TO &mcbs_end;
+    %DO yr = &claims_start %TO &claims_end;
         %ip_util(&yr);
         %snf_util(&yr);
         %hha_util(&yr);
@@ -259,7 +268,7 @@ QUIT;
 %MACRO stack_svc_ffs(svc);
     DATA PL027710.ffs_util_&svc;
         SET
-        %DO yr = &mcbs_start %TO &mcbs_end;
+        %DO yr = &claims_start %TO &claims_end;
             WORK.&svc._&yr
         %END;
         ;
@@ -325,7 +334,7 @@ PROC DELETE DATA=WORK.spine; RUN;
 /* 5i. Diagnostics                                                */
 /* ============================================================ */
 
-TITLE "FFS utilization — distinct benes by year";
+TITLE "FFS utilization - distinct benes by year";
 PROC SQL;
     SELECT year,
            COUNT(*)                                AS n_bene_years,
@@ -354,7 +363,7 @@ TITLE;
 PROC DELETE DATA=WORK.ffs_benes; RUN;
 
 %MACRO cleanup_ffs;
-    %DO yr = &mcbs_start %TO &mcbs_end;
+    %DO yr = &claims_start %TO &claims_end;
         PROC DELETE DATA=WORK.ip_&yr;  RUN;
         PROC DELETE DATA=WORK.snf_&yr; RUN;
         PROC DELETE DATA=WORK.hha_&yr; RUN;

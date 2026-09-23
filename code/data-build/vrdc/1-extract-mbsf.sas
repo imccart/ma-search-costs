@@ -1,12 +1,12 @@
 /* ------------------------------------------------------------ */
-/* TITLE:        MBSF extraction — beneficiary panel             */
+/* TITLE:        MBSF extraction - beneficiary panel             */
 /* PROJECT:      ma-search-costs                                 */
 /* INPUT:        MBSF.MBSF_ABCD_&yr  for &yr in 2014..2018       */
 /* OUTPUT:       PL027710.bene_mbsf_panel                        */
 /* ------------------------------------------------------------ */
 /* Pulls one row per BENE_ID per year, with demographics,       */
 /* coverage months, and the modal annual Part C contract+PBP    */
-/* (or FFS flag). We pull MBSF for 2014-2018 — one year before  */
+/* (or FFS flag). We pull MBSF for 2014-2018 - one year before  */
 /* the 2015 estimation start so we can compute year-over-year   */
 /* incumbent flags at the bene level for all 4 estimation years.*/
 /* ------------------------------------------------------------ */
@@ -42,7 +42,7 @@
             /* Geography. STATE_CODE + COUNTY_CD are SSA-coded     */
             /* annual residence as of 12/31. (NB: codebook docs    */
             /* show STATE_CD but the actual seat field name is     */
-            /* STATE_CODE — verified on seat 2026-05-05.)          */
+            /* STATE_CODE - verified on seat 2026-05-05.)          */
             /* STATE_CNTY_FIPS_CD_<MM> are monthly FIPS codes (the */
             /* actual FIPS our public structural_panel.csv joins   */
             /* on). Use the December monthly value as the annual   */
@@ -61,7 +61,7 @@
             BENE_SMI_CVRAGE_TOT_MONS         AS partB_mons,
             BENE_HMO_CVRAGE_TOT_MONS         AS hmo_mons,
 
-            /* Monthly Part C — kept for the modal_partc macro   */
+            /* Monthly Part C - kept for the modal_partc macro   */
             PTC_CNTRCT_ID_01, PTC_CNTRCT_ID_02, PTC_CNTRCT_ID_03,
             PTC_CNTRCT_ID_04, PTC_CNTRCT_ID_05, PTC_CNTRCT_ID_06,
             PTC_CNTRCT_ID_07, PTC_CNTRCT_ID_08, PTC_CNTRCT_ID_09,
@@ -127,7 +127,7 @@
 /* 1c. Diagnostics                                               */
 /* ============================================================ */
 
-TITLE "MBSF panel — counts by year and FFS/MA";
+TITLE "MBSF panel - counts by year and FFS/MA";
 PROC SQL;
     SELECT year,
            COUNT(*)                          AS n_benes,

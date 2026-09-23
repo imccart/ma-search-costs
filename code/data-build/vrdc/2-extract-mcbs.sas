@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------ */
-/* TITLE:        MCBS extraction — 2015-2018 multi-segment join  */
+/* TITLE:        MCBS extraction - 2015-2018 multi-segment join  */
 /* PROJECT:      ma-search-costs                                 */
 /* INPUT:        MCBS<yr>.SURVEY_DEMO_<yr>                       */
 /*               MCBS<yr>.SURVEY_HISUMRY_<yr>                    */
@@ -23,9 +23,9 @@
 /*     Part A/B months come from MBSF (BENE_HI_CVRAGE_TOT_MONS / */
 /*     BENE_SMI_CVRAGE_TOT_MONS) instead.                        */
 /*   - DEMO IPR (continuous) is post-2020; 2015-2018 has         */
-/*     IPR_IND (5-bucket categorical) — pulled as poverty_ind.   */
+/*     IPR_IND (5-bucket categorical) - pulled as poverty_ind.   */
 /*   - MAPLANQX MAMONPRM (monthly) is post-2018; 2015-2018 has  */
-/*     D_ANHMO (annual) — pulled as madv_annual_premium.        */
+/*     D_ANHMO (annual) - pulled as madv_annual_premium.        */
 /*   - MCREPLNQ underwent a major redesign post-2018. Items       */
 /*     dropped from this extract because they don't exist in    */
 /*     2015-2018: INTERNET, USENET, COMPDESK, COMPPHON, COMPTAB, */
@@ -34,7 +34,7 @@
 /*     New 2015-2018 items kept: KNETFRND, KNHAVCOM, KBOKRECD,   */
 /*     KBOKREAD, KBOKUNDR, KREELINE.                              */
 /*   - DEMO geography & ADI variable names are NOT stable in    */
-/*     2015-2018 — they were renamed mid-decade. Year-specific  */
+/*     2015-2018 - they were renamed mid-decade. Year-specific  */
 /*     names are resolved via macro variables below; the output */
 /*     columns are always `cbsa_type`, `ruca`, `adi_raw`.       */
 /*     Mapping (verified against 2015/2016/2017/2018 codebooks): */
@@ -48,7 +48,7 @@
 
 
 /* ============================================================ */
-/* 2a. Extract one year — multi-segment join                     */
+/* 2a. Extract one year - multi-segment join                     */
 /* ============================================================ */
 
 %MACRO extract_mcbs_year(yr);
@@ -59,7 +59,7 @@
     %LOCAL urbrur_var ruca_select adi_var weight_var;
     %IF &yr LE 2016 %THEN %DO;
         %LET urbrur_var  = H_URBRUR;
-        %LET ruca_select = '' AS ruca,;           /* H_RUCA absent 2015-2016 — character empty to match H_RUCA's character type in 2017-2018 */
+        %LET ruca_select = '' AS ruca,;           /* H_RUCA absent 2015-2016 - character empty to match H_RUCA's character type in 2017-2018 */
         %IF &yr = 2015 %THEN %LET adi_var = ADI;
                        %ELSE %LET adi_var = CENSADI;
         %LET weight_var  = CS1YRWGT;
@@ -76,7 +76,7 @@
     PROC SQL;
         CREATE TABLE WORK.demo_&yr AS
         SELECT
-            BASE_ID,
+            BASEID,
             INT_TYPE,
             H_AGE                       AS age,
             H_SEX                       AS sex_cd,
@@ -105,7 +105,7 @@
     PROC SQL;
         CREATE TABLE WORK.hisumry_&yr AS
         SELECT
-            BASE_ID,
+            BASEID,
             H_MEDSTA                    AS medstatus,
             H_OPMDCD                    AS dual_annual,
             H_DUAL01, H_DUAL02, H_DUAL03, H_DUAL04, H_DUAL05, H_DUAL06,
@@ -123,24 +123,26 @@
     PROC SQL;
         CREATE TABLE WORK.maplanqx_&yr AS
         SELECT
-            BASE_ID,
+            BASEID,
             D_MADV                      AS madv_self_report,
             MADVYRS                     AS madv_years_enrolled,
             D_ANHMO                     AS madv_annual_premium
         FROM MCBS&yr..SURVEY_MAPLANQX_&yr ;
     QUIT;
 
-    /* ---- Medicare plan questions (MCREPLNQ) — search behavior ---- */
+    /* ---- Medicare plan questions (MCREPLNQ) - search behavior ---- */
     /* 2015-2018 era. Items dropped from the post-2018 redesign       */
     /* (INTERNET, USENET, COMPDESK, COMPPHON, COMPTAB, RVWCOST,       */
     /* RVWSRVC, CMPRPLN, CPLNTYPC, CPLNTYME, KVSTSITE) are not pulled. */
     PROC SQL;
         CREATE TABLE WORK.mcreplnq_&yr AS
         SELECT
-            BASE_ID,
+            BASEID,
             KNOWMC                      AS medicare_easy_understand,
             KCARKNOW                    AS medicare_self_knowledge,
             KNCOVOPT                    AS easy_compare_options,
+            KNCOVREV                    AS review_options_freq,
+            KNCOVINF                    AS enough_info_to_compare,
             KNINFMCR                    AS tried_find_info,
             KVSITWEB                    AS visited_medicare_site,    /* predecessor of KVSTSITE */
             KCPHINFO                    AS called_800_medicare,
@@ -155,19 +157,19 @@
         FROM MCBS&yr..SURVEY_MCREPLNQ_&yr ;
     QUIT;
 
-    /* ---- HI Type & Premium (HITLINE) — per-plan obtain-channel ---- */
-    /* HITLINE has multiple rows per BASE_ID (one per insurance plan).  */
+    /* ---- HI Type & Premium (HITLINE) - per-plan obtain-channel ---- */
+    /* HITLINE has multiple rows per BASEID (one per insurance plan).  */
     /* PLANTYPE codes: 1=Mcare A, 2=Mcare B, 3=Mcare C/MA, 4=Mcare D,   */
     /* 5=Medicaid, 20-21=ESI, 30-31=Self-purchased private, 40=VA,     */
     /* 50=Tricare, 60=Retiree Drug Subsidy, 70=Other, 6=Other public.  */
     /* S_OBTNP = how plan was obtained (1=Directly, 2-9=via institution).*/
-    /* We aggregate to one row per BASE_ID to flag institutional        */
-    /* coverage and MA-via-institutional-channel — used downstream to   */
+    /* We aggregate to one row per BASEID to flag institutional        */
+    /* coverage and MA-via-institutional-channel - used downstream to   */
     /* restrict to direct-purchase active shoppers.                     */
     PROC SQL;
         CREATE TABLE WORK.hitline_raw_&yr AS
         SELECT
-            BASE_ID,
+            BASEID,
             PLANTYPE,
             S_OBTNP,
             S_INS
@@ -178,7 +180,7 @@
     /* (verified 2026-05-05). S_OBTNP includes a SAS special-missing    */
     /* value .N (formatted as "N"), which is sorted before any regular  */
     /* numeric and so is never matched by the institutional-channel    */
-    /* IN list — desired behavior (treat .N as no-channel, not          */
+    /* IN list - desired behavior (treat .N as no-channel, not          */
     /* institutional).                                                  */
     /*                                                                  */
     /* MCBS HITLINE PLANTYPE codes (per CMS HITLINE codebook):          */
@@ -186,7 +188,7 @@
     /*   Part D / MAPD, 5=Medicaid, 6=Other public, 20/21=ESI,          */
     /*   30/31=Self-purchased, 40=VA, 50=Tricare, 60=RDS, 70=Other.     */
     /* S_OBTNP ("how did you obtain this plan") is INAPPLICABLE for      */
-    /* Medicare A/B/C/D rows — those rows always have S_OBTNP = . , so   */
+    /* Medicare A/B/C/D rows - those rows always have S_OBTNP = . , so   */
     /* ma_obtained_directly and ma_obtained_inst computed below are     */
     /* zero by construction. Kept as columns for diagnostic continuity   */
     /* but not used in the active-shopper filter (which simplifies to   */
@@ -194,19 +196,19 @@
     PROC SQL;
         CREATE TABLE WORK.hitline_&yr AS
         SELECT
-            BASE_ID,
+            BASEID,
             MAX(PLANTYPE IN (20, 21))                       AS has_esi,
             MAX(PLANTYPE = 40)                              AS has_va,
             MAX(PLANTYPE = 50)                              AS has_tricare,
             MAX(PLANTYPE = 60)                              AS has_rds,
             MAX(PLANTYPE = 30 OR PLANTYPE = 31)             AS has_self_purch,
             MAX(PLANTYPE = 3)                               AS has_ma_row,
-            /* Always zero by construction — S_OBTNP inapplicable for MA */
+            /* Always zero by construction - S_OBTNP inapplicable for MA */
             MAX(PLANTYPE = 3 AND S_OBTNP = 1)               AS ma_obtained_directly,
             MAX(PLANTYPE = 3 AND S_OBTNP IN (2,3,4,5,6,7,8,9,91))
                                                             AS ma_obtained_inst
         FROM WORK.hitline_raw_&yr
-        GROUP BY BASE_ID ;
+        GROUP BY BASEID ;
     QUIT;
     PROC DELETE DATA=WORK.hitline_raw_&yr; RUN;
 
@@ -214,7 +216,7 @@
     PROC SQL;
         CREATE TABLE WORK.genhlth_&yr AS
         SELECT
-            BASE_ID,
+            BASEID,
             GENHELTH                    AS srh,
             COMPHLTH                    AS health_vs_year_ago
         FROM MCBS&yr..SURVEY_GENHLTH_&yr ;
@@ -223,19 +225,19 @@
     /* ---- Sample weights + variance design (CENWGTS) ----        */
     /* Continuously-enrolled annual weight: CS1YRWGT in 2015-2016,  */
     /* CEYRSWGT in 2017-2018. Both are "Continuously enrolled full  */
-    /* sample weight" per their codebook labels — same construct,   */
+    /* sample weight" per their codebook labels - same construct,   */
     /* renamed mid-decade. Resolved via &weight_var (set above).   */
     PROC SQL;
         CREATE TABLE WORK.cenwgts_&yr AS
         SELECT
-            BASE_ID,
+            BASEID,
             &weight_var                 AS wgt_full_sample,
             SUDSTRAT                    AS variance_stratum,
             SUDUNIT                     AS variance_psu
         FROM MCBS&yr..SURVEY_CENWGTS_&yr ;
     QUIT;
 
-    /* ---- Inner-join on BASE_ID (DEMO is the spine) ---- */
+    /* ---- Inner-join on BASEID (DEMO is the spine) ---- */
     PROC SQL;
         CREATE TABLE WORK.mcbs_&yr AS
         SELECT
@@ -258,6 +260,8 @@
             mr.medicare_easy_understand,
             mr.medicare_self_knowledge,
             mr.easy_compare_options,
+            mr.review_options_freq,
+            mr.enough_info_to_compare,
             mr.tried_find_info,
             mr.visited_medicare_site,
             mr.called_800_medicare,
@@ -283,12 +287,12 @@
             w.variance_stratum,
             w.variance_psu
         FROM        WORK.demo_&yr     AS d
-        LEFT JOIN   WORK.hisumry_&yr  AS h  ON d.BASE_ID = h.BASE_ID
-        LEFT JOIN   WORK.maplanqx_&yr AS mp ON d.BASE_ID = mp.BASE_ID
-        LEFT JOIN   WORK.mcreplnq_&yr AS mr ON d.BASE_ID = mr.BASE_ID
-        LEFT JOIN   WORK.hitline_&yr  AS ht ON d.BASE_ID = ht.BASE_ID
-        LEFT JOIN   WORK.genhlth_&yr  AS g  ON d.BASE_ID = g.BASE_ID
-        LEFT JOIN   WORK.cenwgts_&yr  AS w  ON d.BASE_ID = w.BASE_ID ;
+        LEFT JOIN   WORK.hisumry_&yr  AS h  ON d.BASEID = h.BASEID
+        LEFT JOIN   WORK.maplanqx_&yr AS mp ON d.BASEID = mp.BASEID
+        LEFT JOIN   WORK.mcreplnq_&yr AS mr ON d.BASEID = mr.BASEID
+        LEFT JOIN   WORK.hitline_&yr  AS ht ON d.BASEID = ht.BASEID
+        LEFT JOIN   WORK.genhlth_&yr  AS g  ON d.BASEID = g.BASEID
+        LEFT JOIN   WORK.cenwgts_&yr  AS w  ON d.BASEID = w.BASEID ;
     QUIT;
     %row_count(WORK.mcbs_&yr, mcbs joined &yr);
 
@@ -321,7 +325,7 @@
 /* ------------------------------------------------------------ */
 /* Compute derived indicators once across all years so they're   */
 /* consistent. Note that not_esrd / full_year_partAB are now     */
-/* placeholders — they get filled in script 3 once we have the   */
+/* placeholders - they get filled in script 3 once we have the   */
 /* MBSF Part A/B months and ESRD info via the bene-panel join.   */
 /* ============================================================ */
 
@@ -348,7 +352,7 @@ DATA PL027710.mcbs_panel;
     is_ma_admin = (ma_months > 0);
     is_ffs_admin = (ma_months = 0);
 
-    /* Derived: search behavior — any direct evidence of search.        */
+    /* Derived: search behavior - any direct evidence of search.        */
     /* CMPRPLN was post-2018, so the index is built from the three      */
     /* search items that exist 2015-2018: tried-find-info, visited-     */
     /* medicare-site, called-800-medicare.                              */
@@ -392,7 +396,7 @@ RUN;
 /* 2d. Diagnostics                                                */
 /* ============================================================ */
 
-TITLE "MCBS panel — counts by year";
+TITLE "MCBS panel - counts by year";
 PROC SQL;
     SELECT
         year,
@@ -410,7 +414,7 @@ PROC SQL;
 QUIT;
 TITLE;
 
-TITLE "Active-shopper sample restriction — counts by year";
+TITLE "Active-shopper sample restriction - counts by year";
 PROC SQL;
     SELECT
         year,

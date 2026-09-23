@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------ */
-/* TITLE:        VRDC config — libnames, year ranges, macros    */
+/* TITLE:        VRDC config - libnames, year ranges, macros    */
 /* PROJECT:      ma-search-costs                                 */
 /* AUTHOR:       Ian McCarthy / Emory University                 */
 /* PURPOSE:      Global parameters for the structural-model     */
@@ -16,8 +16,8 @@
 /* ============================================================ */
 /* Library references                                            */
 /* ------------------------------------------------------------ */
-/* All libraries — both CMS-side data and the writable project  */
-/* library — are auto-mounted by the VRDC seat's startup. User  */
+/* All libraries - both CMS-side data and the writable project  */
+/* library - are auto-mounted by the VRDC seat's startup. User  */
 /* code references them directly without LIBNAME statements:    */
 /*                                                                */
 /*   PL027710.<dataset>           (writable project library)     */
@@ -37,7 +37,7 @@
 /*       MM in 01..12, yyyy in 2015..2018                         */
 /*                                                                */
 /* Do NOT add any LIBNAME statements. If a library appears       */
-/* undefined in the SAS log, that's a seat-config issue — fix    */
+/* undefined in the SAS log, that's a seat-config issue - fix    */
 /* it on the seat side, not in user code.                        */
 /* ============================================================ */
 
@@ -48,14 +48,24 @@
 
 /* Primary MCBS sample: 2015-2018 (post-redesign, single survey  */
 /* instrument across years). Legacy 2007-2013 is out of scope    */
-/* for v1; see background/vrdc-plan.md §3.                       */
+/* for v1; see background/vrdc-plan.md section 3.                       */
 %LET mcbs_start = 2015;
 %LET mcbs_end   = 2018;
 
-/* MBSF year range. Pull one year before mcbs_start so we have   */
-/* the lagged contract+PBP for the bene-specific incumbent flag. */
-%LET mbsf_start = 2014;
+/* MBSF year range. Extends back to 2012 for two reasons: the     */
+/* one-year lag for the bene-specific incumbent flag, and FFS     */
+/* enrollment status in the 2012-2014 history years so we know    */
+/* whether a bene's prior FFS claims are complete or they were    */
+/* in MA (used to form expected use in the EC rebuild).           */
+%LET mbsf_start = 2012;
 %LET mbsf_end   = 2018;
+
+/* FFS claims history range. Claims are pulled back to 2012 to     */
+/* form each bene's expected use from up to three prior years     */
+/* (script 5 feeds the expected-use step). MA encounters do not   */
+/* exist before 2015, so this affects the FFS side only.          */
+%LET claims_start = 2012;
+%LET claims_end   = 2018;
 
 
 /* ============================================================ */
@@ -79,7 +89,7 @@
 /* ============================================================ */
 
 /* Aged-in (65+) Medicare with full-year Part A and Part B.      */
-/* We do NOT require zero HMO months — MA enrollees are the      */
+/* We do NOT require zero HMO months - MA enrollees are the      */
 /* inside option of interest.                                    */
 %MACRO mbsf_age65_filter;
     AGE_AT_END_REF_YR >= 65
@@ -89,7 +99,7 @@
 
 
 /* ============================================================ */
-/* Utility — modal contract+PBP across 12 monthly columns        */
+/* Utility - modal contract+PBP across 12 monthly columns        */
 /* ------------------------------------------------------------ */
 /* The MBSF Base segment carries PTC_CNTRCT_ID_01..12 and        */
 /* PTC_PBP_ID_01..12. We need a single annual plan assignment    */
@@ -143,7 +153,7 @@
 
 
 /* ============================================================ */
-/* Logging — print row counts after each step                    */
+/* Logging - print row counts after each step                    */
 /* ============================================================ */
 %MACRO row_count(ds, label);
     PROC SQL NOPRINT;

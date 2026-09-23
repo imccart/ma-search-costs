@@ -34,7 +34,7 @@ After a successful run, the writable library `PL027710` holds:
 
 ```
 PL027710.bene_mbsf_panel        MBSF 2014-2018 (one row per BENE_ID-year)
-PL027710.mcbs_panel             MCBS 2015-2018 (one row per BASE_ID-year)
+PL027710.mcbs_panel             MCBS 2015-2018 (one row per BASEID-year)
 PL027710.bene_panel             MCBS x MBSF, lagged plan, incumbent flag
 PL027710.ma_util_panel          MA encounter utilization (BENE_ID x year)
 PL027710.ma_util_<svc>          per-service stacked panels (ip/snf/hha/op/car/dme)

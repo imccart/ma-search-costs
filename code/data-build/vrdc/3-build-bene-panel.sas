@@ -6,7 +6,7 @@
 /*               MCBSXWLK.MCBSXWLK   (BASE_ID -> BENE_ID xwalk)   */
 /* OUTPUT:       PL027710.bene_panel                             */
 /* ------------------------------------------------------------ */
-/* Joins MCBS respondents (BASE_ID, year) to MBSF (BENE_ID, year) */
+/* Joins MCBS respondents (BASEID, year) to MBSF (BENE_ID, year) */
 /* via the MCBSXWLK crosswalk. Attaches:                         */
 /*   - this year's annual contract+PBP (from script 1)           */
 /*   - last year's annual contract+PBP (lagged within MBSF)      */
@@ -18,14 +18,14 @@
 /* ============================================================ */
 /* 3a. Crosswalk MCBSXWLK.MCBSXWLK : BASE_ID -> BENE_ID          */
 /* ------------------------------------------------------------ */
-/* Single dataset, one row per beneficiary (stable mapping —     */
+/* Single dataset, one row per beneficiary (stable mapping -     */
 /* BASE_ID and BENE_ID are both per-bene IDs that don't vary by  */
 /* year, so no year column is needed in the join).               */
 /* ============================================================ */
 
 PROC SQL;
     CREATE TABLE WORK.xwalk AS
-    SELECT BASE_ID, BENE_ID
+    SELECT BASE_ID AS BASEID, BENE_ID
     FROM MCBSXWLK.MCBSXWLK ;
 QUIT;
 %row_count(WORK.xwalk, xwalk);
@@ -53,7 +53,7 @@ QUIT;
 
 
 /* ============================================================ */
-/* 3c. Join MBSF (this year) + MBSF (lag) on BENE_ID×year        */
+/* 3c. Join MBSF (this year) + MBSF (lag) on BENE_ID x year        */
 /* ============================================================ */
 
 PROC SQL;
@@ -103,8 +103,8 @@ QUIT;
 PROC SQL;
     CREATE TABLE PL027710.bene_panel AS
     SELECT
-        /* MCBS side — survey + admin + derived items */
-        mc.BASE_ID,
+        /* MCBS side - survey + admin + derived items */
+        mc.BASEID,
         mc.year,
 
         /* Identifiers from xwalk */
@@ -125,7 +125,7 @@ PROC SQL;
         mc.zip_cd,
         mc.ruca,
         mc.cbsa_type,
-        mc.adi_raw,                 /* ADI 2015 / CENSADI 2016-17 / ADINATNL 2018 — different scales */
+        mc.adi_raw,                 /* ADI 2015 / CENSADI 2016-17 / ADINATNL 2018 - different scales */
 
         /* Insurance / coverage */
         mc.medstatus,
@@ -139,7 +139,7 @@ PROC SQL;
         mc.madv_years_enrolled,
         mc.madv_annual_premium,
 
-        /* Channel flags (HITLINE) — for active-shopper sample */
+        /* Channel flags (HITLINE) - for active-shopper sample */
         mc.has_esi,
         mc.has_va,
         mc.has_tricare,
@@ -158,6 +158,8 @@ PROC SQL;
         mc.medicare_easy_understand,
         mc.medicare_self_knowledge,
         mc.easy_compare_options,
+        mc.review_options_freq,
+        mc.enough_info_to_compare,
         mc.tried_find_info,
         mc.visited_medicare_site,
         mc.called_800_medicare,
@@ -178,7 +180,7 @@ PROC SQL;
         mc.variance_stratum,
         mc.variance_psu,
 
-        /* MBSF side — FIPS geography + annual plan ID + lag.           */
+        /* MBSF side - FIPS geography + annual plan ID + lag.           */
         /* partA_mons / partB_mons come from MBSF (BENE_HI_CVRAGE_TOT_  */
         /* MONS / BENE_SMI_CVRAGE_TOT_MONS); they are NOT in MCBS       */
         /* 2015-2018 (no MYENROLL segment in that era).                  */
@@ -212,7 +214,7 @@ PROC SQL;
         END                       AS link_status
 
     FROM PL027710.mcbs_panel AS mc
-    LEFT JOIN WORK.xwalk            AS x  ON mc.BASE_ID  = x.BASE_ID
+    LEFT JOIN WORK.xwalk            AS x  ON mc.BASEID  = x.BASEID
     LEFT JOIN WORK.mbsf_with_lag    AS b  ON x.BENE_ID  = b.BENE_ID
                                           AND mc.year    = b.year ;
 QUIT;
@@ -223,7 +225,7 @@ QUIT;
 /* 3e. Diagnostics                                                */
 /* ============================================================ */
 
-TITLE "Bene panel — link status by year";
+TITLE "Bene panel - link status by year";
 PROC SQL;
     SELECT year, link_status, COUNT(*) AS n
     FROM PL027710.bene_panel
@@ -232,7 +234,7 @@ PROC SQL;
 QUIT;
 TITLE;
 
-TITLE "Bene panel — counts by year and FFS/MA, after sample restrictions";
+TITLE "Bene panel - counts by year and FFS/MA, after sample restrictions";
 PROC SQL;
     SELECT year,
            COUNT(*)                                    AS n_total,
