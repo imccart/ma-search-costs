@@ -122,7 +122,7 @@ for (bi in seq_along(idx_by_bene)) {
   for (jj in seq_along(rows)) {
     i    <- rows[jj]
     brow <- bene_rows[[i]]; mid <- brow$market_id; mkt <- markets[[mid]]
-    v    <- compute_bene_utility(mkt, bene_mc[[i]], bene_vc[[i]], th)
+    v    <- compute_bene_utility(mkt, bene_prem[[i]], bene_oop[[i]], th)
     inc  <- brow$prior_plan_offered == 1L &
             !is.na(brow$prior_plan_id) & mkt$plan_id == brow$prior_plan_id
     v[inc] <- v[inc] + th$psi
@@ -205,14 +205,15 @@ agg  <- long[, .(
 agg[, cut_pct := cut_map[scenario]]
 setorder(agg, cut_pct)
 
-# Welfare decomposition vs the 0% baseline, in dollars via alpha (utils per
-# $1,000). Plan-value channel: the inclusive-value gain as broader consideration
-# brings better plans within reach. Search-cost channel: minus the change in
-# expected search cost c_i * E[#actions], so a lower search burden is a gain.
+# Welfare decomposition vs the 0% baseline, in dollars via the premium
+# coefficient (marginal utility of $1,000; premium is the money people actually
+# respond to). Plan-value channel: the inclusive-value gain as broader
+# consideration brings better plans within reach. Search-cost channel: minus the
+# change in expected search cost c_i * E[#actions], so a lower burden is a gain.
 iv_base <- agg[cut_pct == 0, mean_IV]
 sc_base <- agg[cut_pct == 0, mean_search_cost]
-agg[, welfare_plan_value  :=  1000 * (mean_IV - iv_base)         / th$alpha]
-agg[, welfare_search_cost := -1000 * (mean_search_cost - sc_base) / th$alpha]
+agg[, welfare_plan_value  :=  1000 * (mean_IV - iv_base)         / th$alpha_prem]
+agg[, welfare_search_cost := -1000 * (mean_search_cost - sc_base) / th$alpha_prem]
 agg[, welfare_total       := welfare_plan_value + welfare_search_cost]
 
 out <- agg[, .(cut_pct, dominated_share, search_rate, mean_consideration,

@@ -169,16 +169,21 @@ message(sprintf("Chosen-plan index resolved for all %d benes", nrow(bene)))
 # bene-year, look up this beneficiary's mean_cost / var_cost for every plan in
 # their market, in markets[[m]]$plan_id order (the order choice_idx refers to).
 setkey(bcp, BASEID, year, plan_id)
-bene_mc <- vector("list", nrow(bene))
-bene_vc <- vector("list", nrow(bene))
+bene_mc   <- vector("list", nrow(bene))
+bene_vc   <- vector("list", nrow(bene))
+bene_prem <- vector("list", nrow(bene))
+bene_oop  <- vector("list", nrow(bene))
 for (i in seq_len(nrow(bene))) {
   m   <- bene$market_id[i]
   pid <- markets[[m]]$plan_id
   rec <- bcp[.(bene$BASEID[i], bene$year[i], pid)]
-  bene_mc[[i]] <- rec$mean_cost
-  bene_vc[[i]] <- rec$var_cost
+  bene_mc[[i]]   <- rec$mean_cost
+  bene_vc[[i]]   <- rec$var_cost
+  bene_prem[[i]] <- rec$premium
+  bene_oop[[i]]  <- rec$oop_cost
 }
-stopifnot(!any(vapply(bene_mc, function(x) any(is.na(x)), logical(1))))
+stopifnot(!any(vapply(bene_mc, function(x) any(is.na(x)), logical(1))),
+          !any(vapply(bene_prem, function(x) any(is.na(x)), logical(1))))
 # Length guard: each cost vector must match its market's plan count exactly.
 stopifnot(all(lengths(bene_mc) ==
               vapply(bene$market_id, function(m) nrow(markets[[m]]), integer(1))))

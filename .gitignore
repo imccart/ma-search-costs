@@ -12,6 +12,9 @@ background/
 # Agents — Claude/AI working notes (per /kickoff convention)
 agents/
 
+# Working notes (planning, decision records)
+notes/
+
 # Scratch/temporary files
 scratch/
 

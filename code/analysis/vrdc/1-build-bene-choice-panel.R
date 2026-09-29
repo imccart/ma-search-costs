@@ -227,8 +227,9 @@ message(sprintf("Plans per bene-year: median=%d, mean=%.1f, max=%d",
 # 4b. Inner-join bene-specific cost-sharing (EC and Var_C from script 0)
 # ---------------------------------------------------------------------------
 
-ec <- fread(ec_path, select = c("BENE_ID", "year", "plan_id", "EC", "Var_C_ij"))
-setnames(ec, c("EC", "Var_C_ij"), c("mean_cost", "var_cost"))
+ec <- fread(ec_path, select = c("BENE_ID", "year", "plan_id",
+                                "EC", "premium", "EC_oop", "Var_C_ij"))
+setnames(ec, c("EC", "EC_oop", "Var_C_ij"), c("mean_cost", "oop_cost", "var_cost"))
 
 n_before <- nrow(bcp)
 bcp <- merge(bcp, ec, by = c("BENE_ID", "year", "plan_id"), all.x = TRUE)
@@ -239,7 +240,14 @@ message(sprintf("After EC merge: %d rows (was %d). Bene-plan pairs without EC: %
 # MA bene-plan pair script 0 could not project).
 bcp[, mean_cost := fifelse(is.na(mean_cost), mean_cost_pop, mean_cost)]
 bcp[, var_cost  := fifelse(is.na(var_cost),  var_cost_pop,  var_cost)]
-bcp[, c("mean_cost_pop", "var_cost_pop") := NULL]
+# Premium / expected-OOP split (Abaluck-Gruber). Script 0 supplies both for
+# priced plans; a plan it could not price gets the county-year mean priced
+# premium, with the remaining population cost assigned to OOP.
+prem_fill <- bcp[!is.na(premium), .(pf = mean(premium)), by = .(county_fips, year)]
+bcp[prem_fill, on = c("county_fips", "year"), pf := i.pf]
+bcp[is.na(premium),  premium  := pf]
+bcp[is.na(oop_cost), oop_cost := pmax(mean_cost - premium, 0)]
+bcp[, c("mean_cost_pop", "var_cost_pop", "pf") := NULL]
 
 
 # ---------------------------------------------------------------------------

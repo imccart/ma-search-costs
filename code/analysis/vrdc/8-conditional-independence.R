@@ -115,7 +115,7 @@ loglik_drop <- function(theta, nu_draws, keep) {
   ll_choice <- numeric(n); B_vec <- numeric(n); logc_det <- numeric(n)
   for (i in seq_len(n)) {
     brow <- bene_rows[[i]]; mid <- brow$market_id; mkt <- markets[[mid]]
-    v    <- compute_bene_utility(mkt, bene_mc[[i]], bene_vc[[i]], th)
+    v    <- compute_bene_utility(mkt, bene_prem[[i]], bene_oop[[i]], th)
     prom <- market_prom[[mid]]
     sal  <- compute_salience(mkt, prom, brow, th)
     inc  <- brow$prior_plan_offered == 1L &
@@ -162,7 +162,7 @@ loglik_corr <- function(theta_ext, nu_draws, om_draws) {
   ll_choice <- numeric(n); B_vec <- numeric(n); logc_det <- numeric(n)
   for (i in seq_len(n)) {
     brow <- bene_rows[[i]]; mid <- brow$market_id; mkt <- markets[[mid]]
-    v    <- compute_bene_utility(mkt, bene_mc[[i]], bene_vc[[i]], th)
+    v    <- compute_bene_utility(mkt, bene_prem[[i]], bene_oop[[i]], th)
     prom <- market_prom[[mid]]
     sal  <- compute_salience(mkt, prom, brow, th)
     inc  <- brow$prior_plan_offered == 1L &
@@ -227,7 +227,7 @@ compute_pairwise_cooccurrence <- function(theta, nu_draws) {
   Jmod  <- matrix(0, n, length(pairs))
   for (i in seq_len(n)) {
     brow <- bene_rows[[i]]; mid <- brow$market_id; mkt <- markets[[mid]]
-    v    <- compute_bene_utility(mkt, bene_mc[[i]], bene_vc[[i]], th)
+    v    <- compute_bene_utility(mkt, bene_prem[[i]], bene_oop[[i]], th)
     prom <- market_prom[[mid]]; sal <- compute_salience(mkt, prom, brow, th)
     inc  <- brow$prior_plan_offered == 1L &
             !is.na(brow$prior_plan_id) & mkt$plan_id == brow$prior_plan_id

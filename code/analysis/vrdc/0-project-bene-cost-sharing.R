@@ -22,7 +22,8 @@
 #   data/input/ffs_util_panel.csv           SAS-exported FFS utilization (script 5)
 #
 # Output:
-#   data/output/bene_cost_sharing.csv       one row per (BENE_ID, plan_id, year)
+#   data/output/bene_cost_sharing.csv       one row per (BENE_ID, plan_id, year),
+#                                           including an FFS outside-option row,
 #                                           with EC[c|i,j] and Var_C_ij
 #
 # Service categories (matched to the existing dominance pipeline at
@@ -165,8 +166,9 @@ priced <- draws[pbp_sched, on = .(county_fips, year), nomatch = NULL, allow.cart
 priced[, oop  := n_car_pcp_lines * pcp_per_event + n_car_spec_lines * spec_per_event +
                  n_op_other * op_per_event + n_op_er_visits * er_per_event +
                  n_ip_days * ip_per_day]
-priced[, cost := premium_annual + pmin(ded_total + oop, moop_eff)]
-bp <- priced[, .(EC = mean(cost)), by = .(BENE_ID, year, county_fips, plan_id)]
+priced[, oop_capped := pmin(ded_total + oop, moop_eff)]
+bp <- priced[, .(premium = premium_annual[1], EC_oop = mean(oop_capped)),
+             by = .(BENE_ID, year, county_fips, plan_id)]
 
 # Risk cell: decile of the bene's expected annual cost, from their own expected
 # use. The variance below is the spread among cell-mates (Abaluck-Gruber risk
@@ -202,7 +204,8 @@ pv[, cost := pmin(ded_total +
              n_ip_days * ip_per_day, moop_eff)]
 schedvar <- pv[, .(Var_C_ij = var(cost)), by = .(cell, sched_id)]
 
-# Attach EC and the cell variance, write.
+# Attach expected OOP and the cell variance to the MA plans; premium is carried
+# separately (Abaluck-Gruber premium / expected-OOP split).
 pbp_v <- merge(pbp_sched, sched, by = sched_cols)
 bp <- merge(bp, bene_use[, .(BENE_ID, year, cell)], by = c("BENE_ID", "year"))
 bp <- merge(bp, pbp_v[, .(plan_id, county_fips, year, sched_id)],
@@ -210,7 +213,69 @@ bp <- merge(bp, pbp_v[, .(plan_id, county_fips, year, sched_id)],
 bp <- merge(bp, schedvar, by = c("cell", "sched_id"), all.x = TRUE)
 bp[is.na(Var_C_ij), Var_C_ij := schedvar[, median(Var_C_ij, na.rm = TRUE)]]
 bp <- merge(bp, bene[, .(BENE_ID, year, BASEID)], by = c("BENE_ID", "year"))
+bp[, EC := premium + EC_oop]
+out_ma <- bp[, .(BENE_ID, BASEID, year, county_fips, plan_id, EC, premium, EC_oop, Var_C_ij, cell)]
 
-out <- bp[, .(BENE_ID, BASEID, year, county_fips, plan_id, EC, Var_C_ij, cell)]
+# ---------------------------------------------------------------------------
+# FFS outside option, priced on the same footing as MA.
+# ---------------------------------------------------------------------------
+# National Traditional-Medicare cost-sharing (CMS Part A/B, standalone PDP,
+# Medigap Plan G), mirroring code/data-build/10-build-ffs-outside.R. FFS is a
+# mixture over unobserved Medigap status: bare (Part A/B 20% coinsurance, no OOP
+# cap) weight omega_bare, Plan-G-supplemented (services covered, only Part B and
+# PDP deductibles remain) weight 1 - omega_bare. Premium and expected OOP are
+# kept separate. Part B premium is common to every alternative and MA excludes
+# it, so FFS excludes it too. Inpatient Part A is a per-benefit-period deductible;
+# at the 5-day average length of stay that is part_a_deductible / 5 per day.
+omega_bare <- 0.25
+ffs_series <- data.table(
+  year                 = 2012:2018,
+  part_a_deductible    = c(1156, 1184, 1216, 1260, 1288, 1316, 1340),
+  part_b_deductible    = c(140, 147, 147, 147, 166, 183, 183),
+  pdp_premium_mo       = c(31.08, 31.17, 32.42, 33.13, 34.10, 35.63, 35.02),
+  pdp_deductible       = c(320, 325, 310, 320, 360, 400, 405),
+  medigap_g_premium_mo = rep(150, 7)
+)
+
+# Premium (deterministic) and OOP (use-driven) for each FFS regime.
+ffs_cost <- function(dt) {
+  dt[, prem_bare := 12 * pdp_premium_mo]
+  dt[, prem_supp := 12 * (pdp_premium_mo + medigap_g_premium_mo)]
+  dt[, oop_bare  := part_b_deductible + pdp_deductible +
+       0.20 * (n_car_pcp_lines * allowed_pcp + n_car_spec_lines * allowed_spec +
+               n_op_other * allowed_op + n_op_er_visits * allowed_er) +
+       n_ip_days * part_a_deductible / 5]
+  dt[, oop_supp  := part_b_deductible + pdp_deductible]
+  dt[]
+}
+
+# EC: the bene's own expected-use draws priced through FFS; mixture means of the
+# premium and OOP pieces separately.
+ffs_ec <- ffs_cost(merge(draws, ffs_series, by = "year"))[
+  , .(premium = omega_bare * mean(prem_bare) + (1 - omega_bare) * mean(prem_supp),
+      EC_oop  = omega_bare * mean(oop_bare)  + (1 - omega_bare) * mean(oop_supp)),
+  by = .(BENE_ID, year, county_fips)]
+ffs_ec[, plan_id := "FFS"]
+
+# Variance of OOP (premium is deterministic and drops out). Omega-weighted
+# within-regime variance: the between-regime gap is modeler uncertainty about
+# Medigap status, which the enrollee knows, so it is not risk they face. The supp
+# branch has no service-cost variation, so its within variance is ~0.
+ffs_sched <- copy(ffs_series)[, jk := 1L]
+pff <- ffs_cost(peers[ffs_sched, on = "jk", allow.cartesian = TRUE])
+ffs_var <- pff[, .(var_bare = var(oop_bare), var_supp = var(oop_supp)),
+               by = .(cell, year)]
+ffs_var[, Var_C_ij := omega_bare * var_bare + (1 - omega_bare) * var_supp]
+
+ffs_out <- merge(ffs_ec, bene_use[, .(BENE_ID, year, cell)], by = c("BENE_ID", "year"))
+ffs_out <- merge(ffs_out, ffs_var[, .(cell, year, Var_C_ij)],
+                 by = c("cell", "year"), all.x = TRUE)
+ffs_out[is.na(Var_C_ij), Var_C_ij := ffs_var[, median(Var_C_ij, na.rm = TRUE)]]
+ffs_out <- merge(ffs_out, bene[, .(BENE_ID, year, BASEID)], by = c("BENE_ID", "year"))
+ffs_out[, EC := premium + EC_oop]
+ffs_out <- ffs_out[, .(BENE_ID, BASEID, year, county_fips, plan_id, EC, premium, EC_oop, Var_C_ij, cell)]
+
+out <- rbind(out_ma, ffs_out)
 fwrite(out, out_path)
-cat(sprintf("Wrote %s: %d rows, %d benes\n", out_path, nrow(out), uniqueN(out$BENE_ID)))
+cat(sprintf("Wrote %s: %d rows, %d benes (%d FFS rows)\n",
+            out_path, nrow(out), uniqueN(out$BENE_ID), nrow(ffs_out)))

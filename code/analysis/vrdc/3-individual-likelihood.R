@@ -17,7 +17,7 @@
 #   book_read (KBOKREAD)  — ordered 0/1/2 (none/parts/thorough)
 # Cost covariates: demographics + book_understood_dm (KBOKUNDR) + tenure_dm
 #   (madv_years_enrolled). Consideration: help AND delegate (KCHIHELP=2 / =3).
-# Utility uses bene-specific EC (bene_mc / bene_vc from script 2).
+# Utility uses bene-specific premium and expected OOP (bene_prem / bene_oop from script 2).
 
 N_SIM_DRAWS <- 50L   # nu draws per beneficiary; common random numbers set in 5
 
@@ -33,8 +33,11 @@ for (col in c("log_inc_dm","educ_yrs_dm","age_dm","is_dual","adi_dm",
 
 # ---- Parameter layout (25) ------------------------------------------------
 theta_names <- c(
-  # Utility (5): + delta on cost variance (risk term)
-  "alpha", "beta", "xi_FFS", "psi", "delta",
+  # Utility (8): premium / expected-OOP split (Abaluck-Gruber), star, Part D
+  #   coverage, and plan-category fixed effects (HMO omitted). No risk/variance
+  #   term — MA choices do not identify one (Curto-Einav MA spec; see
+  #   notes/delta-and-demand-spec.md).
+  "alpha_prem", "alpha_oop", "beta", "xi_FFS", "psi", "partd", "cat_PPO", "cat_PFFS",
   # Search-cost covariates (10): + comprehension (hb), tenure (exp),
   #   easy-to-compare (KNCOVOPT), enough-info-to-compare (KNCOVINF)
   "gamma_0", "gamma_inc", "gamma_educ", "gamma_age", "gamma_dual", "gamma_adi",
@@ -50,10 +53,10 @@ theta_names <- c(
   "lambda_PF_0", "lambda_broker_0"
 )
 
-# Bounds: alpha, delta, both ordered gaps, and both lambda constants >= 0;
-# everything else free.
+# Bounds: both cost coefficients, both ordered gaps, and both lambda constants
+# >= 0; everything else free.
 theta_lower <- setNames(rep(-Inf, length(theta_names)), theta_names)
-theta_lower[c("alpha","delta","tau_gap","tau_review_gap",
+theta_lower[c("alpha_prem","alpha_oop","tau_gap","tau_review_gap",
               "lambda_PF_0","lambda_broker_0")] <- 0
 theta_upper <- setNames(rep(Inf, length(theta_names)), theta_names)
 
@@ -66,16 +69,21 @@ unpack_theta <- function(theta) {
 }
 
 
-# ---- Stage 3 utility (bene-specific EC; incumbent psi added per-bene) ------
-compute_bene_utility <- function(mkt, mc, vc, th) {
-  v <- numeric(nrow(mkt))
+# ---- Stage 3 utility -------------------------------------------------------
+# Premium and expected OOP enter separately (both in $000s); no variance term.
+# MA plans add star, Part D coverage, and plan-category effects (HMO omitted);
+# FFS carries only its constant. Incumbent psi is added per-bene at the call site.
+compute_bene_utility <- function(mkt, prem, oop, th) {
   is_ffs <- mkt$plan_kind == "FFS"; is_ma <- !is_ffs
-  mcs <- mc / 1e3        # cost in $000s
-  vcs <- vc / 1e6        # cost variance in ($000s)^2
-  v[is_ffs] <- -th$alpha * mcs[is_ffs] - th$delta * vcs[is_ffs] + th$xi_FFS
-  v[is_ma]  <- -th$alpha * mcs[is_ma]  - th$delta * vcs[is_ma] +
-                th$beta * ifelse(is.na(mkt$Star_Rating[is_ma]), 0,
-                                 mkt$Star_Rating[is_ma] - 3.5)
+  v <- -th$alpha_prem * (prem / 1e3) - th$alpha_oop * (oop / 1e3)
+  v[is_ffs] <- v[is_ffs] + th$xi_FFS
+  star <- ifelse(is.na(mkt$Star_Rating), 0, mkt$Star_Rating - 3.5)
+  pd   <- ifelse(is.na(mkt$has_partd),   0, as.numeric(mkt$has_partd))
+  cat  <- as.character(mkt$plan_category)
+  ma_add <- th$beta * star + th$partd * pd +
+            th$cat_PPO  * (!is.na(cat) & cat == "PPO") +
+            th$cat_PFFS * (!is.na(cat) & cat == "PFFS")
+  v[is_ma] <- v[is_ma] + ma_add[is_ma]
   v
 }
 
@@ -177,7 +185,7 @@ compute_individual_loglik <- function(theta, nu_draws, return_components = FALSE
   ll_choice <- numeric(n); B_vec <- numeric(n); logc_det <- numeric(n)
   for (i in seq_len(n)) {
     brow <- bene_rows[[i]]; mid <- brow$market_id; mkt <- markets[[mid]]
-    v    <- compute_bene_utility(mkt, bene_mc[[i]], bene_vc[[i]], th)
+    v    <- compute_bene_utility(mkt, bene_prem[[i]], bene_oop[[i]], th)
     prom <- market_prom[[mid]]
     sal  <- compute_salience(mkt, prom, brow, th)
     inc  <- brow$prior_plan_offered == 1L &
@@ -222,7 +230,7 @@ compute_predictions <- function(theta, nu_draws) {
 
   for (i in seq_len(n)) {
     brow <- bene_rows[[i]]; mid <- brow$market_id; mkt <- markets[[mid]]
-    v    <- compute_bene_utility(mkt, bene_mc[[i]], bene_vc[[i]], th)
+    v    <- compute_bene_utility(mkt, bene_prem[[i]], bene_oop[[i]], th)
     prom <- market_prom[[mid]]; sal <- compute_salience(mkt, prom, brow, th)
     inc  <- brow$prior_plan_offered == 1L &
             !is.na(brow$prior_plan_id) & mkt$plan_id == brow$prior_plan_id
