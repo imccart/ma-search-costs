@@ -1,15 +1,16 @@
 # 6-standard-errors.R — standard errors at theta_hat (no re-estimation)
 #
-# Runs standalone after script 3. It reloads theta_hat from results/vrdc and
-# rebuilds nu_draws itself, so scripts 4 (the MLE) and 5 (diagnostics) can be
-# skipped entirely.
+# Always reloads theta_hat from results/vrdc and rebuilds nu_draws itself, so it
+# runs correctly whether or not scripts 4 (the MLE) and 5 (diagnostics) ran this
+# session. Reloading from disk unconditionally keeps the Hessian cache keyed to a
+# single copy of theta_hat (see the cache note below).
 #
 # Two variance estimators:
 #   OPG   outer product of the per-beneficiary scores. Costs 2p = 50 likelihood
 #         evaluations (~15 min) and is written to disk immediately, so there are
 #         usable standard errors long before the Hessian finishes.
-#   HESS  observed information. Costs 1 + r*(2p + p(p-1)) evaluations; at p = 25
-#         that is 2,601 at numDeriv's default r = 4 and 1,301 at r = 2. Every
+#   HESS  observed information. Costs 1 + r*(2p + p(p-1)) evaluations; at p = 33
+#         that is 4,489 at numDeriv's default r = 4 and 2,245 at r = 2. Every
 #         evaluation is cached to hessian_cache.csv, so an interrupted session
 #         resumes from the cache on the next source() instead of starting over.
 # The reported standard error is the sandwich H^-1 J H^-1 when the Hessian is
@@ -27,11 +28,12 @@ dir.create(results_dir, recursive = TRUE, showWarnings = FALSE)
 if (!exists("nu_draws"))
   nu_draws <- qnorm((seq_len(N_SIM_DRAWS) - 0.5) / N_SIM_DRAWS)
 
-if (!exists("theta_hat")) {
-  th_in     <- fread(file.path(results_dir, "theta_hat.csv"))
-  theta_hat <- setNames(th_in$estimate, th_in$parameter)
-  cat("Reloaded theta_hat from disk.\n")
-}
+# Always the disk copy, even if script 4 left theta_hat in memory this session:
+# the Hessian cache keys are perturbations off theta_hat, and the in-memory
+# optimizer copy differs from the disk copy at ~1e-15 (fwrite/fread rounding),
+# which makes every cached key miss on a resume.
+th_in     <- fread(file.path(results_dir, "theta_hat.csv"))
+theta_hat <- setNames(th_in$estimate, th_in$parameter)
 if (is.null(names(theta_hat))) names(theta_hat) <- theta_names
 theta_hat <- theta_hat[theta_names]   # canonical order; the output table pairs
 stopifnot(!any(is.na(theta_hat)),     # parameter/estimate/se by position
