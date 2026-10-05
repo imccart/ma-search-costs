@@ -16,13 +16,225 @@ biblio-style: aer
 
 # Introduction
 
+<!-- Related work: closest-paper positioning. Characterizations are from titles
+     and venues; confirm against the papers before submission. Fold into the
+     intro contribution list once the intro is drafted. -->
+
+Our analysis is most closely related to \citet{coughlin2026}, who estimates a
+model of Medicare Part D plan choice under limited consideration in which
+non-monetary plan attributes play a central role. We share the premise that
+observed plan choices reflect limited consideration rather than full-information
+preference, so that enrollment in dominated plans need not imply that
+beneficiaries prefer them. Our analysis remains distinct in three ways. First,
+we study Medicare Advantage rather than the stand-alone Part D drug benefit, so
+the choice is over bundled medical coverage against an outside option of
+traditional Medicare. Second, we identify consideration from observed search
+behavior, using the search indicators in the Medicare Current Beneficiary Survey
+together with Plan Finder cost-rank and broker-channel prominence, rather than
+inferring the consideration set from choice data alone. Third, our counterfactual
+evaluates a decision-support intervention that lowers search costs, decomposing
+the welfare change into a plan-value channel and a search-cost channel.
+
+Our strategy for separating consideration from preference builds on
+\citet{barseghyan2021}, who show how heterogeneity in consumers' choice sets can
+be disentangled from heterogeneity in their preferences when the choice set is
+only partially observed.
+
 # Background
 
 # Data
 
 # Empirical Strategy
 
+<!-- Draft of the structural core. Equations from
+     code/analysis/vrdc/3-individual-likelihood.R; estimates in Table 1 are
+     preliminary and hand-transcribed, to be rebuilt from standard_errors.csv. -->
+
+We estimate a demand-side model of Medicare Advantage plan choice under limited
+consideration. The model has three stages, consideration, search, and choice,
+and is fit by joint maximum likelihood over the observed search actions and the
+realized plan choice. The point of the three-stage structure is that a plan can
+go unchosen for reasons choice data alone cannot separate, namely that it was
+never considered, that considering it was too costly, or that it was considered
+and preferred less. Limited consideration lets the model attribute part of the
+observed enrollment in dominated plans to consideration rather than preference.
+
+In the choice stage, a beneficiary who considers plan $j$ receives utility
+
+\begin{equation}
+v_{ij} = -\alpha_{\text{prem}} \frac{p_{ij}}{1000} - \alpha_{\text{oop}} \frac{o_{ij}}{1000}
+  + \mathbf{1}[j=\text{FFS}]\,\xi_{\text{FFS}}
+  + \mathbf{1}[j\in\text{MA}]\bigl(\beta (Q_j - 3.5) + \rho\, D_j + \text{cat}_j\bigr)
+  + \psi\, \mathbf{1}[j=\text{inc}_i] + \varepsilon_{ij},
+\label{eq:utility}
+\end{equation}
+
+where $p_{ij}$ is the premium and $o_{ij}$ the beneficiary-specific expected
+out-of-pocket cost, both in thousands of dollars, $Q_j$ is the plan's star
+rating, $D_j$ indicates Part D coverage, $\text{cat}_j$ is a plan-category effect
+for PPO and PFFS relative to the omitted HMO category, $\xi_{\text{FFS}}$ is the
+traditional-Medicare intercept, and $\psi$ is an incumbent-plan term that
+captures state dependence \citep{handel2013}. Premium and expected out-of-pocket
+cost enter separately rather than as a single cost, following \citet{abaluck2011},
+so the model does not impose that a dollar of premium and a dollar of expected
+out-of-pocket cost weigh equally. The specification carries no cost-variance term,
+following the Medicare Advantage demand model of \citet{curto2021}, which likewise
+includes no risk term in utility. With $\varepsilon_{ij}$
+Type-I extreme value, the probability that $i$ chooses $j$ marginalizes over the
+unobserved consideration set, following the consideration-set logit of
+\citet{goeree2008}, as $P_{ij} = \phi_{ij} e^{v_{ij}} / \sum_k \phi_{ik} e^{v_{ik}}$, where $\phi_{ij}$
+is the probability that $j$ enters $i$'s consideration set.
+
+Traditional Medicare and the incumbent plan are considered with certainty
+($\phi = 1$). For every other MA plan, the inclusion probability rises with the
+beneficiary's consideration breadth $K_i = \exp(b_0 + b_{\text{info}} a_i^{\text{info}}
++ b_{\text{web}} a_i^{\text{web}} + b_{\text{phone}} a_i^{\text{phone}} + b_{\text{book}} a_i^{\text{book}})$,
+built from the observed search actions $a_i$, and with the plan's market-level
+prominence $\eta_j = \lambda_{\text{PF}} s_j^{\text{PF}} + \lambda_{\text{broker}} s_j^{\text{broker}}$,
+where $s_j^{\text{PF}}$ is the plan's Plan Finder cost-rank score and
+$s_j^{\text{broker}}$ its broker-channel prominence.
+
+Search is a costly choice that broadens consideration. The per-beneficiary
+search cost is
+
+$$
+c_i = \exp\bigl(\gamma' X_i + \sigma_\alpha \nu_i\bigr),
+$$
+
+where $X_i$ collects demeaned demographics (log income, education, age, dual
+status, area deprivation), handbook comprehension, Medicare tenure, and two
+self-reports of how costly comparing plans is, and $\nu_i$ is a standard normal
+drawn once per beneficiary, so $\sigma_\alpha$ is the scale of a persistent
+person-level search-cost component identified from the panel. Each of five search
+indicators (sought information, visited medicare.gov, called 1-800-Medicare, read
+the handbook, and reviews options, the last two ordered) fires through a logit in
+the index $B_i - c_i - \kappa_a$, where $\kappa_a$ is an indicator-specific
+threshold and $B_i$ is the benefit of considering the full menu over the
+no-search default of traditional Medicare plus the incumbent, measured as the
+difference in inclusive values. Because $B_i$ is built from the beneficiary's own
+expected costs against the local county menu, it varies across counties for a
+fixed person, which is what separates the benefit of search from its cost.
+
+We estimate the 33 parameters by simulated maximum likelihood, integrating the
+action likelihood over 50 common random draws of $\nu_i$ per beneficiary and
+weighting by the survey weights. The objective is optimized with a derivative-free
+subplex routine, since the simulated likelihood is not smooth in the consideration
+thresholds. Standard errors are the sandwich $H^{-1} J H^{-1}$, with $J$ the outer
+product of the per-beneficiary scores and $H$ the observed-information Hessian.
+
 # Results
+
+Table~\ref{tab:estimates} reports the estimated parameters. We organize the
+discussion around the three blocks of the model, the plan-utility coefficients,
+the search-cost gradient and its dispersion, and the consideration block.
+
+\begin{table}[!h]
+\centering
+\caption[Structural parameter estimates]{Structural Parameter Estimates}
+\label{tab:estimates}
+\small
+\begin{tabular}{llrr}
+\toprule
+ & & Estimate & Std.\ Err. \\
+\midrule
+\multicolumn{4}{l}{\textit{Panel A. Plan utility}} \\
+$\alpha_{\text{prem}}$ & Premium (\$000) & 0.770*** & 0.054 \\
+$\alpha_{\text{oop}}$  & Expected out-of-pocket (\$000) & 0.095*** & 0.033 \\
+$\beta$                & Star rating & 0.449*** & 0.052 \\
+$\psi$                 & Incumbent plan & 4.662*** & 0.082 \\
+$\xi_{\text{FFS}}$     & Traditional Medicare & 4.640*** & 0.136 \\
+$\rho$                 & Part D coverage & 1.327*** & 0.087 \\
+                       & PPO (vs.\ HMO) & $-0.057$ & 0.052 \\
+                       & PFFS (vs.\ HMO) & $-0.467$*** & 0.123 \\
+\addlinespace
+\multicolumn{4}{l}{\textit{Panel B. Search cost} $c_i = \exp(\gamma'X_i + \sigma_\alpha \nu_i)$} \\
+$\gamma_0$             & Constant & 0.492*** & 0.053 \\
+$\gamma_{\text{inc}}$  & Log income & $-0.052$** & 0.022 \\
+$\gamma_{\text{educ}}$ & Education (years) & $-0.058$*** & 0.004 \\
+$\gamma_{\text{age}}$  & Age & 0.015*** & 0.002 \\
+$\gamma_{\text{dual}}$ & Dual-eligible & 0.136*** & 0.044 \\
+$\gamma_{\text{adi}}$  & Area deprivation & 0.017 & 0.043 \\
+$\gamma_{\text{hb}}$   & Handbook comprehension & $-0.072$*** & 0.025 \\
+$\gamma_{\text{exp}}$  & Medicare tenure & 0.001 & 0.001 \\
+$\gamma_{\text{easycmp}}$ & Ease of comparing options & 0.091*** & 0.015 \\
+$\gamma_{\text{infcmp}}$  & Enough information to compare & 0.075*** & 0.011 \\
+$\log \sigma_\alpha$   & Random-effect scale & 0.104*** & 0.027 \\
+\addlinespace
+\multicolumn{4}{l}{\textit{Panel C. Search-action thresholds}} \\
+$\kappa_{\text{info}}$  & Sought information & 0.378*** & 0.051 \\
+$\kappa_{\text{web}}$   & Visited medicare.gov & $-0.428$*** & 0.057 \\
+$\kappa_{\text{phone}}$ & Called 1-800-Medicare & $-0.069$ & 0.055 \\
+$\kappa_{\text{book}}$  & Read handbook & $-1.236$*** & 0.053 \\
+$\tau_{\text{gap}}$     & Handbook cutpoint gap & 3.541*** & 0.056 \\
+$\kappa_{\text{review}}$ & Reviews options & $-2.459$*** & 0.059 \\
+$\tau_{\text{review}}$  & Review cutpoint gap & 1.491*** & 0.025 \\
+\addlinespace
+\multicolumn{4}{l}{\textit{Panel D. Consideration breadth} $K_i = \exp(b_0 + \dots)$} \\
+$b_0$                   & Constant & 2.555*** & 0.117 \\
+$b_{\text{info}}$       & Sought information & 0.145** & 0.073 \\
+$b_{\text{web}}$        & Visited medicare.gov & $-0.026$ & 0.398 \\
+$b_{\text{phone}}$      & Called 1-800-Medicare & $-0.089$ & 0.541 \\
+$b_{\text{book}}$       & Read handbook & 0.198 & 0.153 \\
+\addlinespace
+\multicolumn{4}{l}{\textit{Panel E. Plan prominence} $\eta_j$} \\
+$\lambda_{\text{PF}}$     & Plan Finder cost-rank & 0.517* & 0.269 \\
+$\lambda_{\text{broker}}$ & Broker channel & 1.411 & 1.125 \\
+\bottomrule
+\end{tabular}
+
+\begin{minipage}{0.95\linewidth}
+\footnotesize
+Note: Survey-weighted simulated maximum likelihood on the linked MCBS sample,
+2015--2018 (13,667 beneficiaries, 22,978 beneficiary-years). Standard errors are
+the sandwich $H^{-1}JH^{-1}$. Premium and expected
+out-of-pocket cost enter utility with a negative sign; the reported coefficients
+are the marginal disutilities and are constrained to be non-negative.
+* $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\end{minipage}
+\end{table}
+
+We find that beneficiaries respond to premiums far more strongly than to expected
+out-of-pocket cost. The premium disutility is $\alpha_{\text{prem}} = 0.770$ (se
+0.054) and the expected-out-of-pocket disutility is $\alpha_{\text{oop}} = 0.095$
+(se 0.033), both positive and significant. A dollar of premium therefore reduces
+utility about eight times as much as a dollar of expected out-of-pocket cost, the
+premium-overweighting pattern documented by \citet{abaluck2011}. The expected
+out-of-pocket coefficient is small but significantly different from zero, so the
+overweighting is a matter of degree rather than beneficiaries ignoring
+out-of-pocket cost entirely. Quality enters positively, with a star-rating
+coefficient of $\beta = 0.449$ (se 0.052); at the estimated premium weight a
+one-star improvement is worth about \$580 in annual premium. Part D coverage
+carries a large positive coefficient ($\rho = 1.327$), and the incumbent term
+$\psi = 4.662$ (se 0.082) is large and precisely estimated, reproducing the high
+year-over-year retention in the data. Relative to HMO plans, PFFS plans are
+valued less ($-0.467$, se 0.123) while PPO plans are statistically
+indistinguishable.
+
+The search-cost gradient has the expected signs on the dimensions where
+interpretation is clear. Education and income both lower the search cost
+($\gamma_{\text{educ}} = -0.058$, se 0.004; $\gamma_{\text{inc}} = -0.052$, se
+0.022), while age and dual-eligibility raise it ($\gamma_{\text{age}} = 0.015$,
+se 0.002; $\gamma_{\text{dual}} = 0.136$, se 0.044). Handbook comprehension and
+the two self-reports of how costly comparing plans is each enter significantly,
+which gives the cost level a direct measurement rather than leaving it to be
+backed out of the search-benefit index alone. The random-effect scale is
+significant ($\log \sigma_\alpha = 0.104$, se 0.027), so the panel identifies a
+persistent person-level component of the search cost beyond what the observables
+explain.
+
+The consideration block is estimated less sharply. The breadth intercept $b_0 =
+2.555$ (se 0.117) is precise, but the action-specific breadth loadings are
+imprecise, and the two prominence weights are weakly identified, with the Plan
+Finder weight significant only at the ten-percent level ($\lambda_{\text{PF}} =
+0.517$, se 0.269) and the broker weight indistinguishable from zero
+($\lambda_{\text{broker}} = 1.411$, se 1.125). The conditional-independence
+assumption underlying the five-indicator measurement is examined separately in
+the robustness analysis.
+
+These estimates are preliminary. The likelihood was optimized to the evaluation
+cap rather than to a convergence tolerance, and a warm restart to confirm the
+solution is pending, so the point estimates and the sample size in
+Table~\ref{tab:estimates} may change before the final version.
 
 # Discussion
 
