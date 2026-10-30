@@ -26,7 +26,7 @@ f2 <- loglik(to_free(recovery_truth), make_model_data(p2$pair, p2$iy, n_nu = 31L
 z2 <- colSums(f2$scores) / sqrt(colSums(f2$scores^2))
 fwrite(data.table(parameter = free_names, z = z2),
        "results/simulation/identification_base/score_test_seed777.csv")
-round(sort(z2, decreasing = TRUE)[c(1:3, (n_theta - 2):n_theta)], 2)
+round(sort(z2, decreasing = TRUE)[c(1:3, 34:36)], 2)
 
 for (b in c("search_cost", "consideration")) {
   recovery_config <- list(n_b = 3000L, waves = 3L, starts = 2L, reps = 1L,
@@ -34,3 +34,8 @@ for (b in c("search_cost", "consideration")) {
                           block = b, label = paste0("block3000_", b))
   source("code/simulation/4-parameter-recovery.R")
 }
+
+recovery_config <- list(n_b = 3000L, waves = 3L, starts = 2L, reps = 1L,
+                        maxit = 500L, n_nu = 31L, J_min = 3L, J_max = 8L,
+                        block = "joint", label = "joint3000")
+source("code/simulation/4-parameter-recovery.R")

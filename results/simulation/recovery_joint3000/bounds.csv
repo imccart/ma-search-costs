@@ -22,14 +22,10 @@ log_kappa_web,-0.356674943938732,-3,3
 log_kappa_phone,0.182321556793955,-3,3
 log_kappa_book1,-0.916290731874155,-3,3
 log_kappa_book2,0,-3,3
-log_kappa_rev1,-0.693147180559945,-3,3
-log_kappa_rev2,0.182321556793955,-3,3
 log_omega_web,0.405465108108164,-3,3
 log_omega_phone,-0.22314355131421,-3,3
 log_omega_book1,-0.693147180559945,-3,3
 log_omega_book2_inc,-0.356674943938732,-3,3
-log_omega_rev1,-0.510825623765991,-3,3
-log_omega_rev2_inc,-0.356674943938732,-3,3
 b0,-1.5,-6,2
 log_b1,-0.510825623765991,-3,1.5
 logit_lambda_PF,0,-3,3
