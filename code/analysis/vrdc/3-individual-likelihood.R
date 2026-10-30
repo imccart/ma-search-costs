@@ -1,6 +1,6 @@
 # 3-individual-likelihood.R — Joint demand-side likelihood (search + choice)
 #
-# Consolidated spec in agents/model.md. The per-beneficiary likelihood is JOINT
+# Consolidated spec in notes/model.md. The per-beneficiary likelihood is JOINT
 # over the observed search actions and the plan choice, integrated over a
 # beneficiary-level search-cost random effect:
 #

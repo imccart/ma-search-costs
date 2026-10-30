@@ -96,10 +96,10 @@ bene <- bene %>%
     act_web   = as.integer(visited_medicare_site == 1),
     act_phone = as.integer(called_800_medicare   == 1),
     # Ordered handbook reading (KBOKREAD via book_read_amount): 0 none / 1 parts /
-    # 2 thorough. The value->intensity mapping is ASSUMED; verify codes on the seat.
+    # 2 thorough. Codebook: 1 = read thoroughly, 2 = read parts, 3 = not at all.
     book_read = case_when(
-      book_read_amount == 1 ~ 2L,    # read thoroughly  (ASSUMED)
-      book_read_amount == 2 ~ 1L,    # read parts        (ASSUMED)
+      book_read_amount == 1 ~ 2L,    # read thoroughly
+      book_read_amount == 2 ~ 1L,    # read parts
       TRUE                  ~ 0L     # not at all / missing
     ),
     # Review frequency (KNCOVREV): ordered search intensity, 0 none / 1 occasional
@@ -256,8 +256,8 @@ bcp[, c("mean_cost_pop", "var_cost_pop", "pf") := NULL]
 
 bcp[, `:=`(
   is_chosen      = as.integer(plan_id == chosen_plan_id),
-  # Clean 0/1: a bene with no observed prior plan (first panel year, all of
-  # 2015, or a missing/"NA_NA" prior) is a non-incumbent, never NA. Leaving it
+  # Clean 0/1: a bene with no observed prior plan (no prior-year MBSF row, or a
+  # missing/"NA_NA" prior) is a non-incumbent, never NA. Leaving it
   # NA propagates through max(., na.rm=TRUE) to an all-NA bene-year downstream.
   incumbent_bene = as.integer(!prior_plan_id %in% c(NA, "", "NA_NA") & plan_id == prior_plan_id),
   sd_cost        = sqrt(pmax(var_cost, 0)),

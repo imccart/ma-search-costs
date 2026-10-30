@@ -1,0 +1,2 @@
+replication,start,objective,objective_at_truth,convergence_code,message,max_gradient,max_projected_gradient,converged,bounds_hit,evaluations,seconds
+1,2,13.8505748176727,14.1524971047087,1,NEW_X,0.0064582693837858,0.0064582693837858,FALSE,4,211,283.1

@@ -1,0 +1,2 @@
+n_b,waves,starts,reps,maxit,n_nu,seed,label,block,J_min,J_max
+3000,3,2,1,300,31,1729,block3000_search_cost,search_cost,3,8

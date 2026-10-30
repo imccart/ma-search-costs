@@ -1,138 +1,370 @@
 ---
-title: "MA Search Costs"
+title: "Search, Consideration, and Paid Placement in Medicare Advantage"
 author: "Ian McCarthy"
 date: today
 format:
   pdf:
     documentclass: article
     number-sections: true
+    number-depth: 2
     fontsize: 12pt
     geometry: margin=1in
-    latex-engine: xelatex
+    pdf-engine: xelatex
     cite-method: natbib
+    include-in-header:
+      - text: |
+          \usepackage{amsmath,amssymb,amsthm,booktabs}
+          \newtheorem{assumption}{Assumption}
+          \newtheorem{lemma}{Lemma}
+          \newtheorem{proposition}{Proposition}
+          \newtheorem{corollary}{Corollary}
+          \theoremstyle{remark}
+          \newtheorem{remark}{Remark}
+          \newcommand{\ind}[1]{\mathbf{1}[#1]}
+          \newcommand{\E}{\mathbb{E}}
+          \newcommand{\Jac}{\mathcal{J}}
+          \newcommand{\cA}{\mathcal{A}}
+          \newcommand{\cC}{\mathcal{C}}
+          \newcommand{\cP}{\mathcal{P}}
+          \newcommand{\pl}{\Omega}
+          \DeclareMathOperator{\BR}{BR}
 bibliography: BibTeX_Library.bib
 biblio-style: aer
 ---
 
+<!-- Working draft, 2026-10-26. The model (Section 3) and the empirical model
+     (Section 4) are written against the redesigned estimation in
+     notes/search-redesign.md, which has not yet been coded or run. Table 1 and
+     the Results prose are from the earlier specification and are kept as
+     preliminary. Institutional facts in Section 2 trace to
+     notes/theory/lit-readings.md. -->
+
 # Introduction
 
-<!-- Related work: closest-paper positioning. Characterizations are from titles
-     and venues; confirm against the papers before submission. Fold into the
-     intro contribution list once the intro is drafted. -->
+Consumers in many markets cannot evaluate every product available to them, so the products they choose depend on which ones they consider. In health insurance, where menus are long and plans differ along many dimensions, limited consideration offers one explanation for choices that are hard to reconcile with full information \citep{abaluck2011, coughlin2026}. Which plans a consumer considers depends in part on how much effort she puts into searching. It also depends on who shows plans to her, and in many insurance markets the intermediaries who show plans to consumers are paid by the insurers whose plans they sell. Less is known about how consumers' search and sellers' payments to intermediaries interact to determine what consumers consider, or about what that interaction implies for regulating intermediaries. In this paper, we study these questions in Medicare Advantage.
 
-Our analysis is most closely related to \citet{coughlin2026}, who estimates a
-model of Medicare Part D plan choice under limited consideration in which
-non-monetary plan attributes play a central role. We share the premise that
-observed plan choices reflect limited consideration rather than full-information
-preference, so that enrollment in dominated plans need not imply that
-beneficiaries prefer them. Our analysis remains distinct in three ways. First,
-we study Medicare Advantage rather than the stand-alone Part D drug benefit, so
-the choice is over bundled medical coverage against an outside option of
-traditional Medicare. Second, we identify consideration from observed search
-behavior, using the search indicators in the Medicare Current Beneficiary Survey
-together with Plan Finder cost-rank and broker-channel prominence, rather than
-inferring the consideration set from choice data alone. Third, our counterfactual
-evaluates a decision-support intervention that lowers search costs, decomposing
-the welfare change into a plan-value channel and a search-cost channel.
+Apart from her own search, two sources bring plans to a Medicare beneficiary's attention. The Medicare Plan Finder, run by the regulator, lists every plan sold in a county and, during our sample period, sorted that list by estimated annual cost. Insurance agents show beneficiaries the plans they are appointed to sell, and insurers pay them to do so. The two sources differ in who decides what a beneficiary sees.
 
-Our strategy for separating consideration from preference builds on
-\citet{barseghyan2021}, who show how heterogeneity in consumers' choice sets can
-be disentangled from heterogeneity in their preferences when the choice set is
-only partially observed.
+We study these two sources with a model of search and consideration in which insurers can pay agents for additional exposure, and we estimate the consumer side of the model with survey data on how beneficiaries search, linked to their enrollment and claims records. Medicare Advantage is one instance of a broader setting in which a free and complete listing exists alongside intermediaries whom sellers pay to present their products. The ACA Marketplaces have the same structure. HealthCare.gov lists every plan, and insurers pay commissions to agents and brokers. We write the model at that level of generality.
 
-# Background
+In the model, a beneficiary chooses a combination of search activities, each with its own cost. Her activities determine the probability that a given plan comes to her attention through her own search, and whether she sees the public listing. Agents reach her regardless of how she searches. Each plan enters her consideration set independently, and she chooses the best plan she considers. Beneficiaries know how many plans each source tends to show them but not which ones, so they choose how to search based on the expected value of a larger consideration set. Insurers choose how much additional exposure to buy from agents, which we call placement, at a cost that rises more than proportionally with the amount bought. We show that the resulting game among insurers has an equilibrium, give a condition under which it is unique, and derive how placement responds to insurers' margins, to the public listing, and to beneficiaries' search costs.
 
-# Data
+We then estimate the consumer side of the model using respondents to the Medicare Current Beneficiary Survey from 2015 to 2018, linked to their Medicare enrollment and claims records. The survey records four search activities. The enrollment records give the plan each respondent chose and the plan she held the year before, and the claims records give her expected out-of-pocket cost in every plan offered in her county. A plan's Plan Finder rank measures its exposure on the public listing, and its insurer's national footprint combined with the local density of insurance agencies measures its exposure through agents. The estimated model is the special case of the theory in which placement is held at its observed level, so the theory gives the direction in which placement would respond in each counterfactual.
 
-# Empirical Strategy
+Our central theoretical result concerns agents who filter, meaning that they determine which plans a beneficiary sees but do not recommend among them. When agents filter, an additional plan in a beneficiary's consideration set can displace only a worse option, so placement cannot lower consumer welfare relative to less placement. Steering beneficiaries toward high-margin plans therefore lowers welfare only relative to a different allocation of the same placement. Restricting what insurers may pay agents cannot improve the plans beneficiaries end up with at a given level of search, and it can only narrow the set of plans they see.
 
-<!-- Draft of the structural core. Equations from
-     code/analysis/vrdc/3-individual-likelihood.R; estimates in Table 1 are
-     preliminary and hand-transcribed, to be rebuilt from standard_errors.csv. -->
+The model also predicts which plans buy placement. Placement rises with a plan's value to beneficiaries, with its margin, and with how poorly the public listing exposes it. A large enough margin advantage allows a worse plan to buy more placement than a better one, and we give the exact condition, which depends on quantities the estimated model delivers.
 
-We estimate a demand-side model of Medicare Advantage plan choice under limited
-consideration. The model has three stages, consideration, search, and choice,
-and is fit by joint maximum likelihood over the observed search actions and the
-realized plan choice. The point of the three-stage structure is that a plan can
-go unchosen for reasons choice data alone cannot separate, namely that it was
-never considered, that considering it was too costly, or that it was considered
-and preferred less. Limited consideration lets the model attribute part of the
-observed enrollment in dominated plans to consideration rather than preference.
+Public exposure also crowds out placement, because an agent who shows a beneficiary a plan she has already found on Plan Finder adds nothing to her consideration set. The equilibrium return to improving the public listing is therefore below the return computed with placement held fixed. Similarly, lower search costs lead beneficiaries to search more and to use the public listing more often, which lowers every insurer's return to placement. A decision-support counterfactual that holds placement fixed therefore overstates the welfare gain.
 
-In the choice stage, a beneficiary who considers plan $j$ receives utility
+Placement also rises with an insurer's own margin. A tighter cap on agent commissions raises every insurer's margin net of commissions by the same amount, and it raises every plan's placement when those responses are not too dispersed across plans.
 
-\begin{equation}
-v_{ij} = -\alpha_{\text{prem}} \frac{p_{ij}}{1000} - \alpha_{\text{oop}} \frac{o_{ij}}{1000}
-  + \mathbf{1}[j=\text{FFS}]\,\xi_{\text{FFS}}
-  + \mathbf{1}[j\in\text{MA}]\bigl(\beta (Q_j - 3.5) + \rho\, D_j + \text{cat}_j\bigr)
-  + \psi\, \mathbf{1}[j=\text{inc}_i] + \varepsilon_{ij},
-\label{eq:utility}
+Our empirical estimates are preliminary and come from an earlier specification of the consumer model. In that specification, beneficiaries weigh a dollar of premium about eight times as heavily as a dollar of expected out-of-pocket cost, and search costs fall with education and income and rise with age and dual eligibility.
+
+Our analysis contributes to two literatures. First, we contribute to the literature on limited consideration in health insurance choice. Our analysis aligns most directly with \citet{coughlin2026}, who estimates a model of Medicare Part D plan choice under limited consideration in which non-monetary plan attributes play a central role. We share the premise that enrollment in dominated plans reflects limited consideration rather than preference. However, our analysis remains distinct from \citet{coughlin2026} in three key ways: 1) we study Medicare Advantage rather than the stand-alone Part D benefit, so beneficiaries choose among bundled medical coverage options with traditional Medicare as the alternative; 2) we identify consideration from observed search behavior, using the survey's search activities together with Plan Finder rank and agent presence, rather than from choice data alone; and 3) we model the supply of consideration through insurers' payments to agents, and use that model to sign the equilibrium response in each counterfactual.
+
+\citet{barseghyan2021} show how heterogeneity in consumers' choice sets can be separated from heterogeneity in their preferences when the choice set is only partially observed, and our approach to separating consideration from preference builds on their work.
+
+Second, we contribute to the theory of consideration and paid prominence. The consumer side of our model is the random consideration set rule of \citet{manzini2014}, in which each alternative enters the consideration set independently with its own attention probability and the agent chooses the best considered alternative. They treat attention as a fixed characteristic of the agent and the alternative. Here attention depends on the consumer's search and on an insurer's purchase of placement. \citet{eliaz2011} let firms' marketing determine which products a consumer considers, through a deterministic consideration function with randomness coming only from firms' mixed strategies, and name consumer effort as an extension. \citet{goeree2008} and \citet{honka2017} estimate random consideration driven by advertising; in the latter, consumers then search optimally among the banks they are aware of. Our consumers do not direct search toward particular plans, since they do not know which plans a source will show them.
+
+On the supply side, \citet{baye2001} study a gatekeeper that firms pay to list with and consumers pay to consult. \citet{armstrong2011} study prominence bought with a per-sale commission to a salesman who steers all uninformed consumers to the higher-commission product, and discuss, for prominence sold by auction, that the firm with the highest profit per sale wins and that welfare rises when that firm is also the higher-quality one. \citet{haan2011} let firms buy the probability of being sampled first through advertising in a contest, and show that the more advertising-efficient firm advertises more and prices lower. In those models firms choose prices alongside prominence. Here premiums and benefits are fixed by the annual bid, which removes the price-dispersion equilibrium and leaves a game in continuous placement whose equilibrium we characterize across heterogeneous plans and two sources at once. \citet{salz2022} estimates a market in which buyers either search sellers directly or delegate to a broker who auctions among a fixed subset of sellers; sellers there do not pay for access. Relative to these papers, we add a game in which insurers buy exposure on top of random consideration, with free exposure through the regulator's listing alongside the purchased exposure, and consumers who choose how much to search and whether to use the listing.
+
+Our findings apply directly to current policy toward agents. A 2024 CMS rule would have fixed agent compensation at a single amount regardless of the plan chosen and prohibited contract terms with marketing organizations that could encourage steering. The rule was enjoined in July 2024 and vacated in August 2025.
+
+Our model implies that, at a given level of search, prohibiting insurers' supplemental payments to agents cannot raise consumer welfare and lowers it by the value of the consideration those payments supply. The size of that loss depends on margins and placement costs that we do not estimate, so we report it over a range of assumptions. The model also gives the direction of insurers' responses to the commission cap and to changes in how Plan Finder ranks plans.
+
+# Setting
+
+Medicare beneficiaries choose each fall between traditional Medicare and the Medicare Advantage plans sold in their county. Premiums and benefits are fixed through an annual bid before enrollment opens, so within a plan year insurers compete for enrollees through what beneficiaries see rather than through price. Two sources shape that.
+
+The Medicare Plan Finder is run by the regulator. In the version in use from 2010 to 2019, a beneficiary who entered a ZIP code saw a list of the plans available there, 24 on average, which by default was sorted by estimated annual cost and then by star rating; the cost estimate used an average beneficiary's use unless the user entered her own prescription drugs.[^pf] Insurers do not choose their position on the list.
+
+[^pf]: GAO-19-627, *Medicare Plan Finder: Usability Problems and Incomplete Information Create Challenges for Beneficiaries Comparing Coverage Options*, July 2019, p.\ 11; CMS National Training Program, *Medicare Plan Finder Tip Sheet*, June 2014. The redesigned Plan Finder launched in the fall of 2019, after our sample period.
+
+Agents and brokers are paid by insurers. Per-enrollment commissions are capped at a fair market value set by CMS, \$626 nationally for an initial Medicare Advantage enrollment in 2025 and half that for a renewal, and insurers also make administrative and bonus payments to agents and marketing organizations that CMS does not collect data on.[^comp] Agents sell the plans they are appointed to sell. A 2021 Commonwealth Fund study of three national online agent tools in five markets found that each listed on average 43 percent of the Medicare Advantage plans available, and MedPAC notes that agents ``filter plan options, which may not be apparent to beneficiaries.''[^filter] In a 2022 survey, 31 percent of Medicare Advantage enrollees reported help from an insurance agent in choosing a plan, 9 percent reported using Medicare.gov or the Medicare hotline, and 37 percent reported no help.[^use]
+
+[^comp]: 42 CFR 422.2274(d)--(e); CMS Health Plan Management System (HPMS) memo on CY2025 agent and broker compensation, July 18, 2024; MedPAC staff presentation on Medicare agents and brokers, March 6, 2025.
+
+[^filter]: Commonwealth Fund, *How Agents Influence Medicare Beneficiaries' Plan Choices*, April 2021; MedPAC, March 2025.
+
+[^use]: Commonwealth Fund 2022 Biennial Health Insurance Survey, as reported by MedPAC, March 2025.
+
+Whether insurers may pay for favorable treatment by agents is a live question. The CY2025 Medicare Advantage rule (CMS-4205-F, April 2024) would have set agent compensation at a fixed amount regardless of the plan chosen and prohibited contract terms with third-party marketing organizations that could incentivize steering, including volume-based bonuses. The compensation provisions were enjoined by the Northern District of Texas in July 2024 and vacated in August 2025.[^rule] The model below treats the capped per-enrollment commission as part of an insurer's margin and the supplemental payments as purchased placement.
+
+[^rule]: 89 FR 30448; *Americans for Beneficiary Choice v. HHS*, No. 4:24-cv-00439, and *Council for Medicare Choice v. HHS*, No. 4:24-cv-00446 (N.D. Tex.), preliminary injunctions July 3, 2024, vacatur August 18, 2025. Appeal status not confirmed at this writing.
+
+# Model {#sec-model}
+
+## Environment
+
+A market contains $J\geq2$ Medicare Advantage plans, indexed $j=1,\dots,J$, each offered by a different insurer, and consumers indexed by $i$ with weights $w_i>0$ that sum to one. In the application, a market is a county-year, a consumer is a beneficiary-year, and the weights are survey weights. Consumer $i$'s utility from option $j$ is $u_{ij}=v_{ij}+\varepsilon_{ij}$, where $\varepsilon_{ij}$ is i.i.d.\ type I extreme value, and we write $e_{ij}\equiv\exp(v_{ij})$.
+
+A consumer always considers traditional Medicare and, if she was enrolled in a Medicare Advantage plan the previous year, that plan. We call these options her default set $D_i$ and the plan she held the previous year her current plan. Every other plan available in the market may or may not enter her consideration set, depending on how she searches and on how much exposure the plan receives. We write $\pl_i$ for the plans available in the market other than her current plan, and $J_i\equiv|\pl_i|$. She chooses the option with the highest utility in her consideration set $\cC_i$, which always contains $D_i$. Because choice within the consideration set is logit, the default options enter every expression below only through their sum $e_{i0}\equiv\sum_{k\in D_i}e_{ik}$, and we also write $E_i\equiv\sum_{j\in\pl_i}e_{ij}$.
+
+\paragraph{How plans come to a consumer's attention.}
+A plan can come to a consumer's attention in three ways, namely through her own search activities, through the regulator's public listing, and through an insurance agent. The consumer chooses a search profile $p$ from a finite set $\cP$. In the application, a search profile is a combination of the five search activities the survey records (seeking information about Medicare, visiting Medicare.gov, calling 1-800-Medicare, and reading the \emph{Medicare \& You} handbook), which gives 24 search profiles. A search profile matters in two ways. First, it determines $s_i(p)\in[0,1)$, the probability that any given plan in $\pl_i$ comes to her attention through her own search activities, which we call her search exposure. All four activities contribute to $s_i(p)$, each with its own weight (Section 4). Second, it determines whether she sees the public listing, which we write $R(p)\in\{0,1\}$; in the application, $R(p)=1$ when the search profile includes a visit to Medicare.gov. A consumer who sees the listing notices plan $j$ on it with probability $q_{Rj}\in[0,1)$, which the regulator sets through the order of the listing. Agents reach every consumer, whatever her search profile, because the survey does not record contact with agents. An agent brings plan $j$ to her attention with probability $q^B_j\equiv q_B(a_0+a_j)$. Here $q_B\in(0,1]$ measures how widely agents reach consumers, $a_0\in[0,1)$ is the exposure an agent gives any plan whose insurer pays the standard commission, and $a_j\in[0,A)$, with $A\equiv1-a_0$, is the additional exposure that insurer $j$ buys. We call $a_j$ the plan's placement.
+
+\begin{assumption}[Independent inclusion]\label{as:inclusion}
+For a consumer $i$ using search profile $p$, plan $j\in\pl_i$ enters the consideration set with probability
+\begin{equation}\label{eq:rho}
+\rho_{ij}(p,a_j)=1-\chi_{ipj}\bigl(1-q^B_j\bigr),\qquad \chi_{ipj}\equiv\bigl(1-s_i(p)\bigr)\bigl(1-q_{Rj}R(p)\bigr)\in(0,1],
+\end{equation}
+independently across plans.
+\end{assumption}
+
+A plan stays out of the consumer's consideration set only if her own search, the public listing, and agents all miss it. The term $\chi_{ipj}$ is the probability that her own search and the public listing both miss plan $j$.
+
+This probability matters for insurers. An agent who shows a consumer plan $j$ changes her consideration set only if she has not already found the plan another way, so placement is worth less for plans that consumers are likely to find on their own.
+
+\paragraph{Insurers.}
+\begin{assumption}[Placement cost]\label{as:cost}
+Insurer $j$ earns a margin $m_j>0$ per enrollee, net of the standard per-enrollment commission, and pays $C(a_j)$ for supplemental placement $a_j$, where $C:[0,A)\to\mathbb R_+$ is twice continuously differentiable with $C(0)=C'(0)=0$, $C''(a)\geq\gamma_C>0$, and $\lim_{a\to A}C'(a)=\infty$.
+\end{assumption}
+
+We take margins as given when insurers choose placement, because premiums and benefits are set in the annual bid before the plan year begins.
+
+The margin is measured net of the standard commission. CMS caps that commission, and an insurer pays it at the same rate on every enrollment an agent makes, so the commission gives an agent no reason to favor one plan over another. It enters the model only through margins, and a tighter cap raises every insurer's margin by the same amount.
+
+By contrast, insurers' administrative and bonus payments to agents differ across insurers, and we treat them as the cost of placement. The 2024 rule sought to restrict these payments. We write $h\equiv(C')^{-1}$, a continuously differentiable, strictly increasing bijection from $\mathbb R_+$ onto $[0,A)$ with $h(0)=0$ and $0<h'\leq1/\gamma_C$.
+
+\paragraph{Beliefs and the choice of search profile.}
+Consumer $i$ has a search cost $c_i>0$, and search profile $p$ costs her $c_ik(p)$, where $k(p)\geq0$ adds up the costs of the activities in the plan. She does not know in advance which plans her search will turn up. She therefore evaluates each search profile by the benefit she expects from it.
+
+\begin{assumption}[Size-only beliefs]\label{as:naive}
+Consumer $i$ believes that the public listing brings each plan in $\pl_i$ to her attention with a common probability $\bar q_{iR}$, and that agents do so with a common probability $\bar q_{iB}$, independently across plans and sources. Under search profile $p$, she therefore expects each plan in $\pl_i$ to enter her consideration set with probability
+\begin{equation}\label{eq:kappa}
+\hat\rho_i(p)=1-\bigl(1-s_i(p)\bigr)\bigl(1-\bar q_{iR}R(p)\bigr)\bigl(1-\bar q_{iB}\bigr).
+\end{equation}
+Her perceived benefit is $\hat V_i(p)\equiv\E[\log(e_{i0}+\sum_{j\in\hat{\cC}}e_{ij})]$ with $\hat{\cC}\subseteq\pl_i$ drawn under \eqref{eq:kappa}. She chooses $p$ to maximize $\hat V_i(p)-c_ik(p)+\sigma_p\eta_{ip}$, where $\eta_{ip}$ is i.i.d.\ type I extreme value across plans and $\sigma_p>0$, so that the probability of search profile $p$ is the logit $\mu_{ip}$. The perceived rates $(\bar q_{iR},\bar q_{iB})$ do not depend on insurers' placement $a$.
+\end{assumption}
+
+Under this assumption, a consumer knows roughly how many plans each source brings to her attention but does not know which ones. In particular, she does not anticipate that the plans an agent shows her are those whose insurers bought placement. Consumers do not observe placement, so no single insurer can change how consumers search, and each insurer therefore takes the search-profile probabilities $\mu_{ip}$ as given.
+
+\paragraph{Timing and equilibrium.}
+Insurers choose placement simultaneously. Consumers choose search profiles given their perceived rates, consideration sets are drawn according to \eqref{eq:rho}, and each consumer chooses the best option she considers. Given perceived rates, an \emph{equilibrium} is a placement profile $a^*\in[0,A)^J$ such that each $a_j^*$ maximizes insurer $j$'s profit given $a^*_{-j}$ and the search-profile probabilities $\mu$.
+
+An equilibrium is \emph{belief-consistent} if each consumer's perceived rates equal the actual average exposure across the plans in $\pl_i$,
+\begin{equation}\label{eq:consistent}
+\bar q_{iR}=\frac1{J_i}\sum_{j\in\pl_i}q_{Rj},\qquad\bar q_{iB}=\frac1{J_i}\sum_{j\in\pl_i}q^B_j\qquad\text{for every }i.
+\end{equation}
+Under belief consistency, a consumer's expectation of how many plans each source shows her is correct for each source taken alone. A consumer who uses both the listing and agents, however, faces an expected consideration-set size that differs from what she perceives, because she treats the two sources as showing plans independently of each other. The difference equals $-(1-s_i(p))\,J_i$ times the covariance between $q_{Rj}$ and $q^B_j$ across the plans in $\pl_i$.
+
+When plans that rank low on the listing get more exposure through agents, this covariance is negative, and her set is larger than she expects. We return to the sign of this covariance below.
+
+## Demand and placement
+
+Fix consumer $i$, search profile $p$, and profile $a$. For $j\in\pl_i$ the probability that $i$ chooses $j$ is
+\begin{equation}\label{eq:pj}
+P_{ij}(p,a)=\rho_{ij}(p,a_j)\,\phi_{ij}(p,a_{-j}),\qquad\phi_{ij}(p,a_{-j})\equiv\E\bigl[g_{ij}(S_{i,-j})\bigr],
+\end{equation}
+with $g_{ij}(S)\equiv e_{ij}/(e_{i0}+e_{ij}+S)$ and $S_{i,-j}\equiv\sum_{k\in\pl_i\setminus\{j\}}I_ke_{ik}$, where the $I_k$ are independent Bernoulli with success probabilities $\rho_{ik}(p,a_k)$. The factorization follows from independence across plans. The term $\phi_{ij}$ is the probability that plan $j$ is chosen conditional on being considered; it depends on rivals' placement and not on $a_j$. Demand for plan $j$ from consumers for whom it is not the current plan is $D_j(a)=\sum_{i:\,j\in\pl_i}w_i\sum_p\mu_{ip}P_{ij}(p,a)$. The insurer's current enrollees add a term that does not depend on $a_j$, which we omit. Profit is $\pi_j(a)=m_jD_j(a)-C(a_j)$.
+
+\begin{lemma}[Demand is affine in own placement]\label{lem:linear}
+Under Assumptions \ref{as:inclusion} and \ref{as:naive}, $D_j(a)=\alpha_j(a_{-j})+\Phi_j(a_{-j})\,a_j$ with
+\begin{equation}\label{eq:beta}
+\Phi_j(a_{-j})=q_B\sum_{i:\,j\in\pl_i}w_i\sum_p\mu_{ip}\,\chi_{ipj}\,\phi_{ij}(p,a_{-j})\in(0,q_B].
+\end{equation}
+Insurer $j$ has a unique best response $\BR_j(a_{-j})=h\bigl(m_j\Phi_j(a_{-j})\bigr)\in(0,A)$, continuously differentiable in $a_{-j}$.
+\end{lemma}
+
+The first-order condition $C'(a_j^*)=m_j\Phi_j(a_{-j}^*)$ is the placement rule. The marginal return to placement is the margin times the probability that a consumer who has not already seen the plan through her own search or the public listing chooses it when an agent shows it to her. Consumer value enters only through $\phi_{ij}$.
+
+\begin{proposition}[Existence and uniqueness]\label{prop:eq}
+Under Assumptions \ref{as:inclusion}--\ref{as:naive}, for any perceived rates an equilibrium exists and every equilibrium is interior, and a belief-consistent equilibrium exists. Placement choices are strategic substitutes. For $k\neq j$, $\partial\BR_j/\partial a_k\leq0$ and $|\partial\BR_j/\partial a_k|\leq(m_jq_B^2/\gamma_C)\bar\Lambda_{jk}$, where $\bar\Lambda_{jk}\equiv\max_i e_{ij}e_{ik}/\bigl((e_{i0}+e_{ij})(e_{i0}+e_{ij}+e_{ik})\bigr)$ over consumers with $j,k\in\pl_i$. If
+\begin{equation}\label{eq:r}
+r\equiv\max_j\frac{m_jq_B^2}{\gamma_C}\sum_{k\neq j}\bar\Lambda_{jk}<1,
+\end{equation}
+the equilibrium given perceived rates is unique and best-response iteration converges to it.
+\end{proposition}
+
+The condition $r<1$ requires placement costs to be convex enough relative to margins and to the reach of agents, and $\sum_k\bar\Lambda_{jk}$ is small when consumers' defaults are attractive relative to the plans.
+
+## Placement and consumer welfare
+
+Realized welfare for consumer $i$ under search profile $p$ is $V_i(p,a)\equiv\E[\log(e_{i0}+\sum_{j\in\cC}e_{ij})]$ with $\cC$ drawn under \eqref{eq:rho}, up to the Euler constant. Aggregate realized consumer welfare is
+\begin{equation}\label{eq:W}
+W(a)\equiv\sum_iw_i\sum_p\mu_{ip}\bigl[V_i(p,a)-c_ik(p)\bigr].
 \end{equation}
 
-where $p_{ij}$ is the premium and $o_{ij}$ the beneficiary-specific expected
-out-of-pocket cost, both in thousands of dollars, $Q_j$ is the plan's star
-rating, $D_j$ indicates Part D coverage, $\text{cat}_j$ is a plan-category effect
-for PPO and PFFS relative to the omitted HMO category, $\xi_{\text{FFS}}$ is the
-traditional-Medicare intercept, and $\psi$ is an incumbent-plan term that
-captures state dependence \citep{handel2013}. Premium and expected out-of-pocket
-cost enter separately rather than as a single cost, following \citet{abaluck2011},
-so the model does not impose that a dollar of premium and a dollar of expected
-out-of-pocket cost weigh equally. The specification carries no cost-variance term,
-following the Medicare Advantage demand model of \citet{curto2021}, which likewise
-includes no risk term in utility. With $\varepsilon_{ij}$
-Type-I extreme value, the probability that $i$ chooses $j$ marginalizes over the
-unobserved consideration set, following the consideration-set logit of
-\citet{goeree2008}, as $P_{ij} = \phi_{ij} e^{v_{ij}} / \sum_k \phi_{ik} e^{v_{ik}}$, where $\phi_{ij}$
-is the probability that $j$ enters $i$'s consideration set.
+\begin{proposition}[Welfare is monotone in placement]\label{prop:mono}
+Under Assumptions \ref{as:inclusion} and \ref{as:naive}, $W$ is nondecreasing in every $a_j$, and strictly increasing in $a_j$ whenever $j\in\pl_i$ for some consumer. In particular, for any equilibrium $a^*$, realized welfare is weakly higher than when supplemental placement is prohibited and only baseline exposure $a_0$ remains.
+\end{proposition}
 
-Traditional Medicare and the incumbent plan are considered with certainty
-($\phi = 1$). For every other MA plan, the inclusion probability rises with the
-beneficiary's consideration breadth $K_i = \exp(b_0 + b_{\text{info}} a_i^{\text{info}}
-+ b_{\text{web}} a_i^{\text{web}} + b_{\text{phone}} a_i^{\text{phone}} + b_{\text{book}} a_i^{\text{book}})$,
-built from the observed search actions $a_i$, and with the plan's market-level
-prominence $\eta_j = \lambda_{\text{PF}} s_j^{\text{PF}} + \lambda_{\text{broker}} s_j^{\text{broker}}$,
-where $s_j^{\text{PF}}$ is the plan's Plan Finder cost-rank score and
-$s_j^{\text{broker}}$ its broker-channel prominence.
+Proposition \ref{prop:mono} holds because agents in this model filter. They decide which plans a consumer sees and do not recommend among them. A plan that enters a consideration set can only displace a worse option. Steering, in the sense of placement tilted toward high-margin plans, therefore lowers welfare only relative to a different allocation of placement, never relative to less placement, and under Assumption \ref{as:naive} search behavior does not respond to $a$, so there is no other channel. If agents also recommended among the plans they show, the monotonicity would fail; \citet{armstrong2011} study that channel.
 
-Search is a costly choice that broadens consideration. The per-beneficiary
-search cost is
+## Which plans buy placement
 
-$$
-c_i = \exp\bigl(\gamma' X_i + \sigma_\alpha \nu_i\bigr),
-$$
+Write $j\succeq k$ if $e_{ij}\geq e_{ik}$ for every consumer with $j,k\in\pl_i$, $m_j\geq m_k$, $q_{Rj}\leq q_{Rk}$, and no consumer is currently enrolled in plan $j$; write $j\succ k$ if in addition one of the first three holds strictly, where strictness in value means $e_{ij}>e_{ik}$ for some consumer with $j,k\in\pl_i$ and strictness in public exposure requires some consumer with $j,k\in\pl_i$ and $\mu_{ip}>0$ for a search profile $p$ with $R(p)=1$. The last condition is needed because a plan's current enrollees consider it regardless of placement, so they raise only the rival's return to placement. Current enrollees of plan $k$ therefore reinforce the ordering, while current enrollees of plan $j$ would work against it.
 
-where $X_i$ collects demeaned demographics (log income, education, age, dual
-status, area deprivation), handbook comprehension, Medicare tenure, and two
-self-reports of how costly comparing plans is, and $\nu_i$ is a standard normal
-drawn once per beneficiary, so $\sigma_\alpha$ is the scale of a persistent
-person-level search-cost component identified from the panel. Each of five search
-indicators (sought information, visited medicare.gov, called 1-800-Medicare, read
-the handbook, and reviews options, the last two ordered) fires through a logit in
-the index $B_i - c_i - \kappa_a$, where $\kappa_a$ is an indicator-specific
-threshold and $B_i$ is the benefit of considering the full menu over the
-no-search default of traditional Medicare plus the incumbent, measured as the
-difference in inclusive values. Because $B_i$ is built from the beneficiary's own
-expected costs against the local county menu, it varies across counties for a
-fixed person, which is what separates the benefit of search from its cost.
+\begin{proposition}[Ordering of placement]\label{prop:order}
+Under Assumptions \ref{as:inclusion}--\ref{as:naive}, there exists an equilibrium in which $a_j^*\geq a_k^*$ whenever $j\succeq k$. If $r<1$, the unique equilibrium satisfies $a_j^*>a_k^*$ whenever $j\succ k$.
+\end{proposition}
 
-We estimate the 33 parameters by simulated maximum likelihood, integrating the
-action likelihood over 50 common random draws of $\nu_i$ per beneficiary and
-weighting by the survey weights. The objective is optimized with a derivative-free
-subplex routine, since the simulated likelihood is not smooth in the consideration
-thresholds. Standard errors are the sandwich $H^{-1} J H^{-1}$, with $J$ the outer
-product of the per-beneficiary scores and $H$ the observed-information Hessian.
+\begin{corollary}[Exact steering condition]\label{cor:steer}
+In any equilibrium, $a_k^*>a_j^*$ if and only if $m_k/m_j>\Phi_j(a^*_{-j})/\Phi_k(a^*_{-k})$, the ratio of the two plans' exposure-weighted conditional win probabilities.
+\end{corollary}
 
-# Results
+Placement rises with consumer value, with margin, and with how poorly the public listing exposes the plan. The first force is the one \citet{armstrong2011} discuss when prominence is auctioned; the second is steering; the third arises because an agent adds a plan to a consumer's set only if she has not already found it on the public listing. The two can conflict, and Corollary \ref{cor:steer} gives the condition under which margin wins. The ratio $\Phi_j/\Phi_k$ is an equilibrium object, but the redesigned consumer model, once estimated, delivers it directly, since $\phi$ is the choice probability conditional on consideration and $\chi$ is built from the estimated exposures. If plans that are dominated in the mean-variance sense have higher margins, the corollary gives the condition under which agents place them more.
 
-Table~\ref{tab:estimates} reports the estimated parameters. We organize the
-discussion around the three blocks of the model, the plan-utility coefficients,
-the search-cost gradient and its dispersion, and the consideration block.
+## Comparative statics and policy
+
+Perceived rates are held fixed throughout this subsection. Comparative statics run through the Jacobian $\Jac(a)$ of the best-response map, which has zero diagonal and nonpositive off-diagonal entries with $\|\Jac\|_\infty\leq r$. When $r<1$ the equilibrium is continuously differentiable in any parameter $\theta$ that enters $\BR$ smoothly, with $\partial a^*/\partial\theta=(I-\Jac)^{-1}\,\partial\BR/\partial\theta$. The vector $v\equiv\partial\BR/\partial\theta$ collects the direct effects, namely how each insurer would respond holding rivals fixed.
+
+\begin{lemma}[Equilibrium versus direct effects]\label{lem:ge}
+Suppose $r<1$ and let $x=(I-\Jac)^{-1}v$. Then (i) $\|x-v\|_\infty\leq\frac{r}{1-r}\|v\|_\infty$; (ii) if $v\geq0$ and $\min_jv_j\geq r\max_jv_j$ then $x\geq0$, and if $v\leq0$ and $\min_j|v_j|\geq r\max_j|v_j|$ then $x\leq0$; (iii) if $v$ has a single nonzero entry $v_j$, then $x_j$ has the sign of $v_j$ and $|x_j|\geq|v_j|/(1+r^3)$.
+\end{lemma}
+
+The condition in (ii) says that direct effects are not too dispersed across plans relative to the strength of strategic interaction; it holds for every $r<1$ when direct effects are equal, and it fails when some plan's direct effect is close to zero, since that plan can gain from its rivals' retreat. The two-plan case $x_1=(v_1-rv_2)/(1-r^2)$ shows it cannot be weakened.
+
+\begin{proposition}[Margins and the commission cap]\label{prop:margin}
+Suppose $r<1$. Then $\partial a_j^*/\partial m_j>0$ for every $j$. A tighter binding cap on the standard commission, holding $a_0$ and $q_B$ fixed, raises every net margin by the same amount, with direct effects $v_j=h'(m_j\Phi_j)\Phi_j>0$, and weakly raises every plan's placement whenever $\min_jv_j\geq r\max_jv_j$.
+\end{proposition}
+
+\begin{proposition}[Public exposure crowds out placement]\label{prop:crowd}
+Suppose some consumer with $j\in\pl_i$ uses the public listing with positive probability. Holding rivals fixed, $\partial\BR_j/\partial q_{Rj}<0$ and $\partial\BR_k/\partial q_{Rj}\leq0$ for every $k\neq j$. Suppose $r<1$ and let $v\equiv\partial\BR/\partial q_{Rj}$. At every value of $q_{Rj}$ at which $\min_k|v_k|\geq r\max_k|v_k|$, $\partial a_k^*/\partial q_{Rj}\leq0$ for every $k$ and
+\begin{equation}\label{eq:regret}
+\frac{dW(a^*(q_R))}{dq_{Rj}}\;\leq\;\frac{\partial W}{\partial q_{Rj}}\Big|_{a=a^*}.
+\end{equation}
+\end{proposition}
+
+The direct effect on insurer $j$ works through $\chi_{ipj}$. Raising $q_{Rj}$ lowers $\chi_{ipj}$ for every consumer who uses the public listing, so fewer of the consumers an agent could show plan $j$ to are seeing it for the first time. The direct effect on rivals is the substitutes effect. Inequality \eqref{eq:regret} is what the curation counterfactual in Section 6 needs. A regulator who improves plan $j$'s exposure on the public listing raises welfare directly and, by lowering placement, forgoes part of that gain. Plan Finder's default order was by estimated cost, so $q_{Rj}$ rises with a plan's value to a typical consumer, and Proposition \ref{prop:order} then has two of its three forces pulling in opposite directions. Value raises placement through $\phi$ and lowers it through $\chi$. Corollary \ref{cor:steer} gives the exact condition for the second force to win; for two plans with equal margins, $e_1>e_2$, and $q_{R1}\geq q_{R2}$, a sufficient condition is
+\begin{equation}\label{eq:tilt}
+\bigl[\bar\mu_0+\bar\mu_R(1-q_{R2})\bigr]\frac{e_2}{e_0+e_1+e_2}\;>\;\bigl[\bar\mu_0+\bar\mu_R(1-q_{R1})\bigr]\frac{e_1}{e_0+e_1},
+\end{equation}
+where $\bar\mu_R$ is the share of search profiles using the public listing and $\bar\mu_0=1-\bar\mu_R$, for a single consumer type with $s=0$. When the ranking gap is large and most consumers use the public listing, most consumers an agent reaches already see the better plan, and the insurer of the worse plan has more to gain from paying to be shown. The cross-plan covariance between $q_{Rj}$ and $q^B_j$ is therefore negative in this case. Under belief consistency, the true expected size of a consumer's combined consideration set then exceeds the size she perceives.
+
+\paragraph{Decision support.}
+Our main counterfactual lowers search costs, which changes the search profiles consumers choose. When the change moves consumers toward profiles with higher search exposure or toward profiles that include the public listing, it raises $1-\chi_{ipj}$, the probability that a consumer finds plan $j$ without an agent, and so lowers every insurer's return to placement. A lower search cost need not move every consumer in this direction, since it also makes cheaper profiles relatively more attractive to some consumers, and the proposition below applies only to shifts that do.
+
+\begin{proposition}[Decision support and placement]\label{prop:ds}
+Fix perceived rates. Suppose search-profile shares change from $\mu$ to $\mu'$ such that, for every consumer, $\mu'_i$ is obtained from $\mu_i$ by moving mass from profiles $p$ to profiles $p'$ with $s_i(p')\geq s_i(p)$ and $R(p')\geq R(p)$. Then every $\Phi_j$ weakly falls at any fixed $a$, so every direct effect on placement is nonpositive. If $r<1$ and the direct effects $v\leq0$ satisfy $\min_j|v_j|\geq r\max_j|v_j|$ along the path from $\mu$ to $\mu'$, then equilibrium placement weakly falls for every plan, and the change in realized welfare is no larger than the change computed holding placement fixed at its initial equilibrium level. A consumer whose search profile does not change has weakly lower realized benefit after the change than she would at the initial placement.
+\end{proposition}
+
+A proportional cut in every consumer's search cost lowers the cost of every activity, but whether the resulting shift in search profiles satisfies the proposition's condition depends on the parameters. The counterfactual therefore computes the actual shift for each consumer and applies the proposition only where the condition holds. Section 6 reports both the fixed-placement welfare change, which the estimated model delivers, and the sign of the omitted equilibrium term, which the proposition delivers.
+
+## Perceived and realized benefits
+
+Under Assumption \ref{as:naive} a consumer values agents as if they delivered a uniform draw of plans. In equilibrium they deliver a draw tilted by placement. For consumer $i$ let $\rho=(\rho_{ij})_{j\in\pl_i}$ be the realized inclusion probabilities under some search profile, $\bar\rho$ their mean, and $F_i(\rho)$ the realized expected benefit under independent inclusion at $\rho$.
+
+\begin{proposition}[Perceived versus realized benefit]\label{prop:gap}
+(i) The directional derivative of $F_i$ at $\bar\rho\mathbf 1$ toward $\rho$ is $\sum_j(\rho_j-\bar\rho)\ell_{ij}$, where $\ell_{ij}>\ell_{il}$ whenever $e_{ij}>e_{il}$; it is nonnegative if the tilt $(\rho_j-\bar\rho)_j$ is comonotone with $(e_{ij})_j$ and nonpositive if countermonotone. (ii) With $J_i=2$, $e_{i1}\geq e_{i2}$, and $d\equiv\rho_1-\bar\rho$, $F_i(\rho)-F_i(\bar\rho\mathbf1)=d(L_1-L_2)+d^2\zeta_i$ with $L_j\equiv\log(e_{i0}+e_{ij})$ and $\zeta_i\equiv\log\frac{(e_{i0}+e_{i1})(e_{i0}+e_{i2})}{e_{i0}(e_{i0}+e_{i1}+e_{i2})}>0$, so the realized benefit exceeds the uniform-draw benefit whenever $d>0$ and falls short of it if and only if $-(L_1-L_2)/\zeta_i<d<0$.
+\end{proposition}
+
+When no plan has current enrollees, all consumers rank plans the same way, and margins and public exposure are equal across plans, then Proposition \ref{prop:order} makes placement comonotone with value, and size-only consumers are better off than they expect. When margins or the public ranking tilt placement toward lower-value plans, the sign can reverse. The term in $d^2$ arises because a tilted draw is less likely to deliver both plans, and because the value of a set is concave in its contents, so that delivering both is worth less than the sum of delivering each.
+
+\begin{remark}[Insurers with several plans and sophisticated consumers]
+Appointment is at the carrier level, so placement is chosen by insurers that sell several plans and inclusion through agents is correlated within an insurer. With insurer-level placement the first-order condition adds own-portfolio cross terms, portfolio demand is a polynomial rather than affine in placement, and we do not claim the results above for that case. The appendix also states the model with consumers who observe placement and respond to it; existence survives under a stronger convexity condition and uniqueness under a condition that adds the participation feedback, which is a complementarity that can in principle support more than one equilibrium.
+\end{remark}
+
+# Data and Empirical Model {#sec-empirical}
+
+## Data
+
+We link respondents to the Medicare Current Beneficiary Survey for 2015 through 2018 to their Medicare enrollment records in the Master Beneficiary Summary File and to their claims or encounter records. The survey supplies the four search indicators, demographics, and the survey design; the enrollment records supply the plan chosen in each year and the plan held the year before; the claims and encounter records supply each beneficiary's utilization, from which we build her expected out-of-pocket cost in every plan on her county's menu. The choice set is the set of Medicare Advantage plans sold in the beneficiary's county and year in the public landscape files, plus traditional Medicare. We keep community-dwelling respondents aged 65 and over with a full year of Part A and Part B, without end-stage renal disease, and without employer, VA, Tricare, or retiree-drug-subsidy coverage, and we drop beneficiary-years whose prior-year plan cannot be observed although the respondent reports more than a year in Medicare Advantage.[^sample] When the prior-year plan is not sold in the beneficiary's current county, because it was withdrawn or she moved, the default set is traditional Medicare alone.
+
+The plans available in a market are the standard Medicare Advantage plan types in the public landscape files, which excludes special needs and employer plans. The preliminary estimates in Section 5 use an earlier sample of 13,667 beneficiaries and 22,978 beneficiary-years, built before the last restriction above was applied.
+
+[^sample]: The last restriction uses the survey item on years enrolled in Medicare Advantage; a respondent with no prior-year enrollment record who reports more than one year in Medicare Advantage had a current plan we cannot see, and her default would be mis-specified.
+
+The four search indicators are whether the respondent tried to find information about Medicare in the past year, visited the Medicare website, called 1-800-Medicare, and how much of the \emph{Medicare \& You} handbook she read (none, parts, or all). The first three are binary and the last has three levels, so there are 24 search profiles. The survey also asks how often the respondent reviews her Medicare options. We do not use that item, because it describes a general habit rather than search in a particular year, and the four items above already record the search behind each year's choice. The items in the year-$t$ interview refer to the preceding twelve months, which include the open enrollment period that set the year-$t$ plan, and we therefore take them as the search profile behind that choice.
+
+The website item is asked only of respondents who use the internet for information, and the hotline item is asked only of those aware of 1-800-Medicare. We code an item that was not asked as an action not taken, so that not having access to a source and not using it are treated alike.
+
+## The estimated model as a special case
+
+The estimated model is the consumer side of Section 3 with placement held at its observed level. A market is a county-year, and we compute market-level objects such as $\Phi_j$ by survey-weighted aggregation over the respondents in that county-year. Table \ref{tab:mapping} gives the correspondence object by object, and the paragraphs below give the functional forms.
 
 \begin{table}[!h]
 \centering
-\caption[Structural parameter estimates]{Structural Parameter Estimates}
+\caption[Model and empirical objects]{Correspondence between the model and the estimated objects}
+\label{tab:mapping}
+\footnotesize
+\begin{tabular}{lll}
+\toprule
+Model object & Estimated object & Source \\
+\midrule
+Market & County-year; $J$ = MA plans sold there & Landscape files \\
+Consumer $i$, weight $w_i$ & Beneficiary-year, survey weight & MCBS \\
+Default set $D_i$ & Traditional Medicare plus prior-year plan & MBSF \\
+Available plans $\pl_i$ & County-year MA plans other than the current plan & Landscape files \\
+$v_{ij}$, $e_{ij}$ & Utility \eqref{eq:utility} & Estimated \\
+Search profile $p$ & Profile of the four search activities (24) & MCBS \\
+$s_i(p)$ & $\operatorname{logit}^{-1}(b_0+b_1 n(p))$, $n(p)=\sum_a\omega_a\,\text{act}_a(p)$ & Estimated \\
+$R(p)$ & Visited Medicare.gov & MCBS \\
+$q_{Rj}$ & $\lambda_{\text{PF}}\,\text{PF}_j$, Plan Finder cost-rank score & Benefit files; est. \\
+$q^B_j=q_B(a_0+a_j)$ & $\lambda_B\,\text{B}_j$, footprint $\times$ agent density & Enrollment files, CBP; est. \\
+$k(p)$ & $\sum_a\kappa_a\,\text{act}_a(p)$, $\kappa_{\text{info}}=1$ & Estimated \\
+$c_i$ & $\exp(\gamma'X_i+\sigma_\alpha\nu_i)$ & Estimated \\
+$\bar q_{iR},\bar q_{iB}$ & Means of $q_{Rj}$ and $q^B_j$ over $\pl_i$ & Imposed, \eqref{eq:consistent} \\
+$\mu_{ip}$ & Logit over profiles, scale $\sigma_p$ & Estimated \\
+$q_B$, $a_0$, $a_j$, $m_j$, $C$ & Not separately identified; only $q^B_j$ enters & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Utility.}
+A beneficiary who considers plan $j$ receives
+
+\begin{equation}
+\begin{split}
+v_{ij} ={}& -\alpha_{\text{prem}} \frac{y_{ij}}{1000} - \alpha_{\text{oop}} \frac{o_{ij}}{1000}
+  + \ind{j=\text{TM}}\,\xi_{\text{TM}} + \psi\, \ind{j=\text{cur}_i}\\
+  &+ \ind{j\in\text{MA}}\bigl(\beta (Q_j - 3.5) + \delta_{\text{PD}}\, \text{PD}_j + \text{cat}_j\bigr),
+\end{split}
+\label{eq:utility}
+\end{equation}
+
+where $y_{ij}$ is the premium and $o_{ij}$ the beneficiary-specific expected out-of-pocket cost, both in thousands of dollars, $Q_j$ is the plan's star rating, $\text{PD}_j$ indicates Part D coverage, $\text{cat}_j$ is a plan-category effect for PPO and PFFS relative to the omitted HMO category, $\xi_{\text{TM}}$ is the traditional-Medicare intercept, and $\psi$ is a current-plan term that captures state dependence \citep{handel2013}. Premium and expected out-of-pocket cost enter separately, following \citet{abaluck2011}, so the model does not impose that a dollar of each weighs equally. The specification has no cost-variance term, following the Medicare Advantage demand model of \citet{curto2021}. We compute expected out-of-pocket cost by pricing each beneficiary's expected utilization through each plan's cost-sharing schedule, where expected utilization comes from her prior claims or, if she has none, from a prediction based on her characteristics.
+
+\paragraph{Search intensity and exposure.}
+A search profile $p$ maps to an intensity $n(p)=\sum_a\omega_a\,\text{act}_a(p)$, with a weight for each binary action and for each level of the handbook item and the weight on seeking information normalized to one, and to a search exposure
+\begin{equation}\label{eq:s}
+s_i(p)=\operatorname{logit}^{-1}\bigl(b_0+b_1\,n(p)\bigr),
+\end{equation}
+where $\operatorname{logit}^{-1}$ is the logistic function, with $b_1>0$, $\omega_a\geq0$, and the weight on reading all of the handbook larger than the weight on reading part of it, so that more search means more exposure. Intensity is one index because the actions are indicators of one underlying effort; the weights let the actions contribute unequally without the separate breadth coefficients of our earlier specification, which were not identified. Public exposure is $q_{Rj}=\lambda_{\text{PF}}\,\text{PF}_j$, where $\text{PF}_j\in(0,1]$ is the plan's Plan Finder cost-rank score, the exponential of minus its normalized rank within the county-year by estimated annual cost, computed from the plan's premium and cost sharing in the CMS benefit files at a standard utilization profile, and $\lambda_{\text{PF}}\in(0,1)$; it applies to beneficiaries whose profile includes a visit to Medicare.gov. Agent exposure is $q^B_j=\lambda_B\,\text{B}_j$, where $\text{B}_j\in(0,1]$ is the parent insurer's share of national Medicare Advantage enrollment outside the county, from the CMS enrollment files, times insurance-agency establishments per Medicare eligible in the county, from County Business Patterns, scaled to the unit interval with zero values set to the smallest positive value in the data, and $\lambda_B\in(0,1)$; it applies to everyone. The open intervals keep every exposure inside the domain of Section 3, and we report whether either bound binds. Because $\text{B}_j$ is measured at the parent-insurer level and varies by county, agent exposure is common to an insurer's plans within a market, which is the case the remark at the end of Section 3 sets aside; the counterfactuals in Section 6 apply the supply-side propositions under the maintained assumption that observed exposure is an interior equilibrium of the single-plan game. Inclusion is the product form \eqref{eq:rho}. Traditional Medicare and her current plan are considered with certainty.
+
+\paragraph{Search cost and the choice of profile.}
+The search cost is $c_i=\exp(\gamma'X_i+\sigma_\alpha\nu_i)$, where $X_i$ collects demeaned demographics (log income, education, age, dual status, area deprivation), handbook comprehension, years enrolled in Medicare Advantage, and two self-reports of how costly comparing plans is, and $\nu_i$ is a standard normal drawn once per beneficiary, so $\sigma_\alpha$ is the scale of a persistent person-level component identified from the panel.
+
+Handbook comprehension and the two self-reports are taken in the same interview as the search actions. We treat them as predetermined characteristics of the beneficiary, which is a maintained assumption, and report estimates without them. Profile $p$ costs $c_ik(p)$ with $k(p)=\sum_a\kappa_a\,\text{act}_a(p)$, one positive cost per binary action and per level of the handbook item, each parameterized as an exponential so that $k(p)\geq0$ as Section 3 requires, with $\kappa_{\text{info}}=1$ as the normalization. The perceived benefit $\hat V_i(p)$ is the expected inclusive value in \eqref{eq:kappa} with $\bar q_{iR}$ and $\bar q_{iB}$ the means of $q_{Rj}$ and $q^B_j$ over the plans in $\pl_i$, which we compute exactly from a one-dimensional integral representation of the expectation over consideration sets, given in the appendix, so that the objective is smooth in the parameters. The profile is chosen by the logit in Assumption \ref{as:naive} with scale $\sigma_p$.
+
+\paragraph{Likelihood.}
+For beneficiary $b$ with waves $t$, the contribution is
+\begin{equation}\label{eq:lik}
+L_b=\E_\nu\Bigl[\prod_t\mu_{it}(p_{it})\Bigr]\times\prod_t\E_{\cC}\Bigl[\ind{j_t\in\cC}\frac{e_{i_tj_t}}{\sum_{k\in\cC}e_{i_tk}}\Bigr],
+\end{equation}
+where the first expectation integrates the profile probabilities over the person-level draw $\nu$ and the second integrates the choice probability over consideration sets drawn under \eqref{eq:rho} at the observed profile. Every consideration set contains the default set, and the indicator therefore makes the choice term equal to $\rho_{ij}\phi_{ij}$ for a plan in $\pl_i$.
+
+We compute the expectation over consideration sets in the choice term from the same kind of one-dimensional integral representation, and the expectation over $\nu$ by Gauss-Hermite quadrature, so the likelihood involves no simulation. Each beneficiary's log-likelihood is weighted by her full-sample survey weight in her first wave. We maximize the likelihood with a gradient-based optimizer using analytic scores.
+
+Standard errors use the sandwich $H^{-1}JH^{-1}$. We build $J$ from per-beneficiary scores summed within sampling unit and stratum, which makes it consistent for the survey design, and we obtain $H$ by differencing the analytic gradient.
+
+\paragraph{Identification.}
+The utility parameters are identified from choices among considered plans, with the premium and expected-cost coefficients separated by the variation in expected cost across beneficiaries facing the same premiums.
+
+The exposure parameters $b_0$, $b_1$, the intensity weights $\omega_a$, $\lambda_{\text{PF}}$, and $\lambda_B$, by contrast, enter both the choice probabilities, through \eqref{eq:rho}, and the profile probabilities, through the perceived benefit, so they are identified from two sources at once. In choices, beneficiaries with higher intensity choose as if from larger sets, beneficiaries who visited Medicare.gov choose plans ranked high on Plan Finder more often than utility predicts, and beneficiaries in counties where an insurer has a large footprint and agents are dense choose that insurer's plans more often than utility predicts. In profiles, the same parameters set how much a given profile is worth, and the perceived benefit varies across counties for a fixed beneficiary because the menu does. The product form in \eqref{eq:rho} makes the estimated model a special case of Section 3, whereas a single index that added the three exposures would fall outside it.
+
+The search-cost covariates, the profile costs $\kappa_a$, and the scale $\sigma_p$ are identified from which profiles beneficiaries choose, how that varies with their characteristics and across counties, and how sharply it responds to the perceived benefit. Within a beneficiary, the intensity weights in the perceived benefit and the costs in $k(p)$ are separated by that menu variation and by the search-cost covariates.
+
+These arguments maintain three exclusions. The utility parameters do not differ between beneficiaries who did and did not visit Medicare.gov, an insurer's national footprint does not enter utility, and preferences do not covary with search intensity. We report estimates with utility interacted with website use and with insurer effects as checks on the first two.
+
+\paragraph{Remaining differences from Section 3.}
+Four features of the estimated model fall outside the statements of Section 3 and are not covered by its propositions. Agent exposure is measured at the parent-insurer level, as noted above, so the supply-side results are applied to that case under a maintained assumption. Only the product $q^B_j$ is identified, and its division into reach, baseline exposure, and supplemental placement is not, so the prohibition counterfactual in Section 6 is reported over a range of assumed baseline shares. Consumers are treated as myopic about the default they create for the following year. Finally, the sensitivity analysis that allows correlated inclusion within an insurer violates Assumption \ref{as:inclusion} by construction.
+
+# Results {#sec-results}
+
+<!-- Table 1 and the prose below are from the earlier specification (separate
+     action equations; breadth coefficients b_info, ...; single prominence
+     index). They are kept as preliminary until the redesigned model in
+     Section 4 is estimated. Values are from results/standard_errors.csv. -->
+
+The estimates in this section are from an earlier specification of the consumer model, which differs from Section 4 in several ways. Each search action had its own equation in a common net-benefit index rather than a profile choice against a perceived benefit, and that benefit was the value of the whole menu with plan identities known. Consideration breadth was an expected count that loaded on the actions through separate coefficients rather than an exposure probability built from one intensity index. The two exposures entered a single prominence index with unconstrained weights rather than the product form with weights in the unit interval; the earlier agent-channel weight lies outside the new domain. The action thresholds were not costs and could be negative, there was no profile-choice scale, and the sample did not yet drop beneficiary-years with an unobserved prior plan. We report them because the utility and search-cost blocks are informative about what to expect, and we flag the consideration block as the part that will change. Table \ref{tab:estimates} reports the parameters.
+
+\begin{table}[!htbp]
+\centering
+\caption[Structural parameter estimates]{Structural Parameter Estimates, Earlier Specification}
 \label{tab:estimates}
-\small
+\footnotesize
 \begin{tabular}{llrr}
 \toprule
  & & Estimate & Std.\ Err. \\
@@ -141,9 +373,9 @@ the search-cost gradient and its dispersion, and the consideration block.
 $\alpha_{\text{prem}}$ & Premium (\$000) & 0.770*** & 0.054 \\
 $\alpha_{\text{oop}}$  & Expected out-of-pocket (\$000) & 0.095*** & 0.033 \\
 $\beta$                & Star rating & 0.449*** & 0.052 \\
-$\psi$                 & Incumbent plan & 4.662*** & 0.082 \\
-$\xi_{\text{FFS}}$     & Traditional Medicare & 4.640*** & 0.136 \\
-$\rho$                 & Part D coverage & 1.327*** & 0.087 \\
+$\psi$                 & Current plan & 4.662*** & 0.082 \\
+$\xi_{\text{TM}}$      & Traditional Medicare & 4.640*** & 0.136 \\
+$\delta_{\text{PD}}$   & Part D coverage & 1.327*** & 0.087 \\
                        & PPO (vs.\ HMO) & $-0.057$ & 0.052 \\
                        & PFFS (vs.\ HMO) & $-0.467$*** & 0.123 \\
 \addlinespace
@@ -155,9 +387,9 @@ $\gamma_{\text{age}}$  & Age & 0.015*** & 0.002 \\
 $\gamma_{\text{dual}}$ & Dual-eligible & 0.136*** & 0.044 \\
 $\gamma_{\text{adi}}$  & Area deprivation & 0.017 & 0.043 \\
 $\gamma_{\text{hb}}$   & Handbook comprehension & $-0.072$*** & 0.025 \\
-$\gamma_{\text{exp}}$  & Medicare tenure & 0.001 & 0.001 \\
+$\gamma_{\text{exp}}$  & Years enrolled in MA & 0.001 & 0.001 \\
 $\gamma_{\text{easycmp}}$ & Ease of comparing options & 0.091*** & 0.015 \\
-$\gamma_{\text{infcmp}}$  & Enough information to compare & 0.075*** & 0.011 \\
+$\gamma_{\text{infcmp}}$  & Enough information to compare & 0.075*** & 0.015 \\
 $\log \sigma_\alpha$   & Random-effect scale & 0.104*** & 0.027 \\
 \addlinespace
 \multicolumn{4}{l}{\textit{Panel C. Search-action thresholds}} \\
@@ -176,69 +408,161 @@ $b_{\text{web}}$        & Visited medicare.gov & $-0.026$ & 0.398 \\
 $b_{\text{phone}}$      & Called 1-800-Medicare & $-0.089$ & 0.541 \\
 $b_{\text{book}}$       & Read handbook & 0.198 & 0.153 \\
 \addlinespace
-\multicolumn{4}{l}{\textit{Panel E. Plan prominence} $\eta_j$} \\
+\multicolumn{4}{l}{\textit{Panel E. Plan prominence}} \\
 $\lambda_{\text{PF}}$     & Plan Finder cost-rank & 0.517* & 0.269 \\
-$\lambda_{\text{broker}}$ & Broker channel & 1.411 & 1.125 \\
+$\lambda_{\text{broker}}$ & Agent channel & 1.411 & 1.125 \\
 \bottomrule
 \end{tabular}
 
 \begin{minipage}{0.95\linewidth}
 \footnotesize
 Note: Survey-weighted simulated maximum likelihood on the linked MCBS sample,
-2015--2018 (13,667 beneficiaries, 22,978 beneficiary-years). Standard errors are
-the sandwich $H^{-1}JH^{-1}$. Premium and expected
+2015--2018 (13,667 beneficiaries, 22,978 beneficiary-years), earlier
+specification. Standard errors are the sandwich $H^{-1}JH^{-1}$. Premium and expected
 out-of-pocket cost enter utility with a negative sign; the reported coefficients
-are the marginal disutilities and are constrained to be non-negative.
+are the marginal disutilities and are constrained to be nonnegative.
 * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
 \end{minipage}
 \end{table}
 
-We find that beneficiaries respond to premiums far more strongly than to expected
-out-of-pocket cost. The premium disutility is $\alpha_{\text{prem}} = 0.770$ (se
-0.054) and the expected-out-of-pocket disutility is $\alpha_{\text{oop}} = 0.095$
-(se 0.033), both positive and significant. A dollar of premium therefore reduces
-utility about eight times as much as a dollar of expected out-of-pocket cost, the
-premium-overweighting pattern documented by \citet{abaluck2011}. The expected
-out-of-pocket coefficient is small but significantly different from zero, so the
-overweighting is a matter of degree rather than beneficiaries ignoring
-out-of-pocket cost entirely. Quality enters positively, with a star-rating
-coefficient of $\beta = 0.449$ (se 0.052); at the estimated premium weight a
-one-star improvement is worth about \$580 in annual premium. Part D coverage
-carries a large positive coefficient ($\rho = 1.327$), and the incumbent term
-$\psi = 4.662$ (se 0.082) is large and precisely estimated, reproducing the high
-year-over-year retention in the data. Relative to HMO plans, PFFS plans are
-valued less ($-0.467$, se 0.123) while PPO plans are statistically
-indistinguishable.
+We find that beneficiaries respond to premiums far more strongly than to expected out-of-pocket cost. The premium disutility is $\alpha_{\text{prem}} = 0.770$ (se 0.054) and the expected-out-of-pocket disutility is $\alpha_{\text{oop}} = 0.095$ (se 0.033), both positive and significant. A dollar of premium therefore reduces utility about eight times as much as a dollar of expected out-of-pocket cost, the premium-overweighting pattern documented by \citet{abaluck2011}. The expected out-of-pocket coefficient is small but significantly different from zero, so the overweighting is a matter of degree rather than beneficiaries ignoring out-of-pocket cost entirely. Quality enters positively, with a star-rating coefficient of $\beta = 0.449$ (se 0.052); at the estimated premium weight a one-star improvement is worth about \$580 in annual premium. Part D coverage has a large positive coefficient ($\delta_{\text{PD}} = 1.327$), and the current-plan term $\psi = 4.662$ (se 0.082) is large and precisely estimated, reproducing the high year-over-year retention in the data. Relative to HMO plans, PFFS plans are valued less ($-0.467$, se 0.123) while PPO plans are statistically indistinguishable.
 
-The search-cost gradient has the expected signs on the dimensions where
-interpretation is clear. Education and income both lower the search cost
-($\gamma_{\text{educ}} = -0.058$, se 0.004; $\gamma_{\text{inc}} = -0.052$, se
-0.022), while age and dual-eligibility raise it ($\gamma_{\text{age}} = 0.015$,
-se 0.002; $\gamma_{\text{dual}} = 0.136$, se 0.044). Handbook comprehension and
-the two self-reports of how costly comparing plans is each enter significantly,
-which gives the cost level a direct measurement rather than leaving it to be
-backed out of the search-benefit index alone. The random-effect scale is
-significant ($\log \sigma_\alpha = 0.104$, se 0.027), so the panel identifies a
-persistent person-level component of the search cost beyond what the observables
-explain.
+The search-cost gradient has the expected signs on the dimensions where interpretation is clear. Education and income both lower the search cost ($\gamma_{\text{educ}} = -0.058$, se 0.004; $\gamma_{\text{inc}} = -0.052$, se 0.022), while age and dual-eligibility raise it ($\gamma_{\text{age}} = 0.015$, se 0.002; $\gamma_{\text{dual}} = 0.136$, se 0.044). Handbook comprehension and the two self-reports of how costly comparing plans is each enter significantly, which gives the cost level a direct measurement rather than leaving it to be backed out of the search-benefit index alone. The random-effect scale is significant ($\log \sigma_\alpha = 0.104$, se 0.027), so the panel identifies a persistent person-level component of the search cost beyond what the observables explain.
 
-The consideration block is estimated less sharply. The breadth intercept $b_0 =
-2.555$ (se 0.117) is precise, but the action-specific breadth loadings are
-imprecise, and the two prominence weights are weakly identified, with the Plan
-Finder weight significant only at the ten-percent level ($\lambda_{\text{PF}} =
-0.517$, se 0.269) and the broker weight indistinguishable from zero
-($\lambda_{\text{broker}} = 1.411$, se 1.125). The conditional-independence
-assumption underlying the five-indicator measurement is examined separately in
-the robustness analysis.
+The consideration block is estimated less sharply, which is one reason the specification changed. The breadth intercept $b_0 = 2.555$ (se 0.117) is precise, but the action-specific breadth loadings are imprecise, and the two prominence weights are weakly identified, with the Plan Finder weight significant only at the ten-percent level ($\lambda_{\text{PF}} = 0.517$, se 0.269) and the agent-channel weight is indistinguishable from zero ($\lambda_{\text{broker}} = 1.411$, se 1.125). The agent-channel estimate also lies outside the unit interval that the redesigned model imposes on $\lambda_B$, so it is not comparable to the estimate that will replace it. In the redesigned model the four breadth loadings are replaced by one intensity index and the exposures enter in product form, which ties each to a distinct pattern in the choice data as described in Section 4. The likelihood for these estimates was optimized to an evaluation cap rather than to a convergence tolerance, so the point estimates will change. The sample size in Table \ref{tab:estimates} will also change once the restriction on unobserved prior plans is applied.
 
-These estimates are preliminary. The likelihood was optimized to the evaluation
-cap rather than to a convergence tolerance, and a warm restart to confirm the
-solution is pending, so the point estimates and the sample size in
-Table~\ref{tab:estimates} may change before the final version.
+# Counterfactuals {#sec-counterfactuals}
+
+<!-- Structure only. Numbers come from 9-counterfactual.R under the redesigned
+     model. Each counterfactual reports the fixed-placement effect from the
+     estimated model and the sign of the equilibrium placement term from the
+     corresponding proposition. -->
+
+We evaluate three policies. For each, we report two quantities. The first is the effect computed with placement held at its observed level, which the estimated consumer model delivers. The second is the sign of the equilibrium term that placement responses would add, which Section 3 delivers.
+
+In every counterfactual, perceived rates are held at their pre-policy values, the convention under which the propositions are stated. We report the belief-consistent re-solve, in which perceived rates move with the policy, separately. The equilibrium signs are conditional on $r<1$ and on the dispersion conditions of Section 3. These conditions involve the margins and the placement cost, which we do not estimate, so we report the signs as conditional.
+
+Welfare is realized welfare \eqref{eq:W}, which excludes the taste shocks in the choice of profile. We integrate it over the posterior of the person-level draw $\nu$ given observed actions and convert it to dollars with the premium coefficient. We decompose the result into the change in the expected value of the chosen plan and the change in search cost. The dollar conversion of the current-plan term is a choice we flag. We report dollar figures alongside two reference points, the mean annual premium in the sample and the premium-equivalent value of a one-star improvement from Section 5, so that their size can be judged against quantities the setting already measures.
+
+\paragraph{Steering.}
+Steering is the case in which a lower-value plan buys more placement than a higher-value one. Corollary \ref{cor:steer} gives the condition for this case in terms of the margin ratio and the ratio $\Phi_j/\Phi_k$ of exposure-weighted conditional win probabilities, which the estimated model delivers. We report that ratio for pairs of plans in the same market in which the mean-variance criterion ranks one plan below the other. Where a margin proxy is available, we compare the ratio with the margin ratio implied by the public bid and rebate data.
+
+\paragraph{Decision support.}
+We cut every beneficiary's search cost by 25, 50, and 100 percent and recompute profile choices, consideration sets, and plan choices. The fixed-placement effect is the change in the share choosing a dominated plan, in expected out-of-pocket cost, and in welfare. We report the share of beneficiaries whose computed shift satisfies the monotonicity condition of Proposition \ref{prop:ds}. Where it holds, the fixed-placement welfare gain is an upper bound on the gain with placement responding, and beneficiaries whose search does not change are worse off than the fixed-placement calculation says.
+
+\paragraph{Curation.}
+We replace the market-level Plan Finder rank with each beneficiary's own expected-cost rank and recompute. With perceived rates held fixed, search does not respond, so the fixed-placement effect works entirely through which plans enter consideration.
+
+Proposition \ref{prop:crowd} is stated for a change in exposure common to all consumers. A personalized ranking changes exposure beneficiary by beneficiary, so for this counterfactual we report the fixed-placement effect and make no claim about the equilibrium sign. Re-ranking the public listing by a different cost estimate is also outside the proposition, because a re-ranking raises the exposure of some plans and lowers that of others, whereas the proposition concerns a rise in a single plan's exposure.
+
+\paragraph{Supplemental placement and the commission cap.}
+Prohibiting supplemental placement sets agent exposure to its baseline level $q_Ba_0$. The estimated model identifies only $q^B_j$, so we report this counterfactual over a range of assumed baseline shares $a_0/(a_0+a_j)$.
+
+By Proposition \ref{prop:mono}, realized welfare at fixed search behavior weakly falls, and the size of the fall measures how much of consumers' consideration the agent channel supplies beyond its baseline. Proposition \ref{prop:margin} gives the sign of the placement response to a change in the commission cap, and we report that response alongside.
 
 # Discussion
 
-# Conclusion
+<!-- Shape only. The interpretation is written against the model; magnitudes
+     wait for the redesigned estimates and counterfactuals. -->
+
+Two features of the setting drive the results. Agents filter rather than recommend, so paid placement adds plans to consideration sets without displacing better ones. The public listing is also complete, so every plan an agent shows is one the regulator already exposes to anyone who looks. Under those features, restricting what insurers may pay agents cannot, by itself, improve what beneficiaries end up with at a given level of search. Such a restriction can only shrink what beneficiaries see.
+
+The 2024 rule that fixed agent compensation regardless of plan and barred volume-based bonuses was aimed at steering. In this model, steering changes which plans are shown but does not determine whether showing them helps. The ordering result identifies which plans gain from steering, namely those with high margins and those the public listing buries. The policy question the model poses is therefore how to rank the public listing and how to lower the cost of using it, rather than whether to allow placement. These are the instruments that move consideration toward the plans beneficiaries would choose with full information, and we have derived the direction in which insurers' placement responds to both.
+
+Three things would make the strongest reading of these results credible. The first is the redesigned estimates, which replace the earlier specification's weakly identified consideration block. The second is a margin proxy for each plan, built from the public bid and rebate data, which turns the steering condition and the placement responses from signed statements into magnitudes. The third is evidence on whether agents recommend among the plans they show. The survey does not observe this, and it is the one feature of the setting that would overturn the welfare result.
+
+\appendix
+
+# Proofs {#sec-proofs}
+
+Throughout, a \emph{consumer-plan pair} $(i,p)$ plays the role of a type, with weight $w_i\mu_{ip}$, search exposure $s_i(p)$, and use of the public listing $R(p)$. Write $g_j\equiv g_{ij}$, $e_j\equiv e_{ij}$, and $e_0\equiv e_{i0}$ when the consumer is fixed.
+
+\begin{proof}[Proof of Lemma \ref{lem:linear}]
+From \eqref{eq:rho}, $\rho_{ij}(p,a_j)=(1-\chi_{ipj})+\chi_{ipj}q_B(a_0+a_j)$, affine in $a_j$ with slope $\chi_{ipj}q_B$. By \eqref{eq:pj} and because $\phi_{ij}$ does not depend on $a_j$, $P_{ij}$ is affine in $a_j$, and so is $D_j$, with slope $\Phi_j$ as in \eqref{eq:beta}. Since $\phi_{ij}\in(0,1)$ and $\chi_{ipj}\in(0,1]$, and $j\in\pl_i$ for some consumer, $\Phi_j\in(0,q_B]$. Profit is affine in $a_j$ plus $-C(a_j)$, hence strictly concave on $[0,A)$; its derivative $m_j\Phi_j-C'(a_j)$ is positive at $0$, strictly decreasing, and tends to $-\infty$ as $a_j\to A$, so it has the unique zero $h(m_j\Phi_j)\in(0,A)$. Each $\phi_{ij}(p,\cdot)$ is the expectation of a bounded function over independent Bernoulli draws, hence a polynomial in $(\rho_{ik})_{k\neq j}$, each affine in $a_k$, so $\Phi_j$ and $\BR_j$ are continuously differentiable.
+\end{proof}
+
+\begin{proof}[Proof of Proposition \ref{prop:eq}]
+Let $\bar a\equiv h(\max_jm_jq_B)<A$. By Lemma \ref{lem:linear}, $\BR$ is a continuous self-map of the compact convex set $[0,\bar a]^J$, so Brouwer's theorem gives an equilibrium, and every equilibrium is interior. For belief consistency, consider the map $(a,\kappa)\mapsto(\BR(a;\mu(\kappa)),\kappa(a))$ with $\kappa(a)$ given by \eqref{eq:consistent}, on $[0,\bar a]^J\times\prod_i[0,1)^2$ restricted to the compact box the second component ranges over. Perceived benefits are polynomials in $\kappa_i$, the profile shares are logit in them and so continuous, and $\BR$ is continuous in $\mu$ because $\Phi_j$ is linear in $\mu$; Brouwer's theorem gives a fixed point, which is a belief-consistent equilibrium.
+
+For strategic substitutes, fix $i$ with $j,k\in\pl_i$ and $p$, and write $S\equiv S_{i,-jk}$ for the sum over plans in $\pl_i$ other than $j$ and $k$. By independence, $\phi_{ij}(p,\cdot)$ is affine in $\rho_{ik}$ with $\partial\phi_{ij}/\partial\rho_{ik}=\E[g_j(S+e_k)-g_j(S)]\leq0$, and since $g_j$ is convex, $g_j(S)-g_j(S+e_k)$ is decreasing in $S$, so $|\partial\phi_{ij}/\partial\rho_{ik}|\leq g_j(0)-g_j(e_k)=\Lambda_{ijk}$. With $\partial\rho_{ik}/\partial a_k=q_B\chi_{ipk}\in(0,q_B]$,
+\begin{equation*}
+\frac{\partial\Phi_j}{\partial a_k}=q_B^2\sum_{i:\,j,k\in\pl_i}w_i\sum_p\mu_{ip}\,\chi_{ipj}\chi_{ipk}\,\frac{\partial\phi_{ij}(p,a_{-j})}{\partial\rho_{ik}},
+\end{equation*}
+which is nonpositive and bounded in absolute value by $q_B^2\bar\Lambda_{jk}$, and $\partial\BR_j/\partial a_k=h'(m_j\Phi_j)m_j\,\partial\Phi_j/\partial a_k$ with $0<h'\leq1/\gamma_C$. Hence $\Jac$ has zero diagonal and $\|\Jac\|_\infty\leq r$. For $r<1$ the mean value inequality on the convex set $[0,A)^J$ makes $\BR$ a contraction on the complete space $[0,\bar a]^J$, which contains $\BR([0,A)^J)$, and Banach's theorem gives a unique fixed point and convergence of iteration.
+\end{proof}
+
+\begin{proof}[Proof of Proposition \ref{prop:mono}]
+Shares and search costs in \eqref{eq:W} do not depend on $a$ under Assumption \ref{as:naive}. For $j\in\pl_i$, $V_i(p,a)$ is affine in $\rho_{ij}$ with
+\begin{equation*}
+\frac{\partial V_i(p,a)}{\partial\rho_{ij}}=\E\bigl[\log(e_0+S_{i,-j}+e_j)-\log(e_0+S_{i,-j})\bigr]\equiv\ell_{ij}(p,a_{-j})>0,
+\end{equation*}
+and $\partial\rho_{ij}/\partial a_j=q_B\chi_{ipj}>0$. Hence $\partial W/\partial a_j=\sum_{i:\,j\in\pl_i}w_i\sum_p\mu_{ip}q_B\chi_{ipj}\ell_{ij}\geq0$, strictly when $j\in\pl_i$ for some consumer. The comparison with $a\equiv0$ follows because $a^*\geq0$ componentwise.
+\end{proof}
+
+\begin{proof}[Proof of Proposition \ref{prop:order}]
+Fix $j\succeq k$ and let $\cA_{jk}\equiv\{a\in[0,\bar a]^J:a_j\geq a_k\}$, closed and convex. Take $a\in\cA_{jk}$. By the condition on current enrollees every consumer with $k\in\pl_i$ has $j\in\pl_i$, so $\Phi_k$ sums over consumers with $j,k\in\pl_i$ while $\Phi_j$ sums over those same consumers plus consumers with $j\in\pl_i$ and $k\notin\pl_i$, whose contribution is nonnegative. It suffices to compare, for a consumer $i$ with $j,k\in\pl_i$ and a search profile $p$, the terms $\chi_{ipj}\phi_{ij}$ and $\chi_{ipk}\phi_{ik}$. Write $\chi_l\equiv\chi_{ipl}$ and $\xi_l\equiv1-q_B(a_0+a_l)\in(0,1]$, so $\rho_{il}=1-\chi_l\xi_l$; $q_{Rj}\leq q_{Rk}$ gives $\chi_j\geq\chi_k$, and $a_j\geq a_k$ gives $\xi_j\leq\xi_k$. Write $S\equiv S_{i,-jk}$. Conditional on $S$, the integrands of $\phi_{ij}$ and $\phi_{ik}$ are
+\begin{equation*}
+\chi_k\xi_k\,g_j(S)+(1-\chi_k\xi_k)\,g_j(S+e_k)\qquad\text{and}\qquad\chi_j\xi_j\,g_k(S)+(1-\chi_j\xi_j)\,g_k(S+e_j).
+\end{equation*}
+Let $\Gamma\equiv g_k(S+e_j)$. Since $e_j\geq e_k$, $g_j(S)\geq g_k(S)$ and $g_j(S+e_k)\geq\Gamma$. Let $\Delta$ denote $\chi_j$ times the first integrand minus $\chi_k$ times the second. Then
+\begin{align*}
+\Delta&=\chi_j\chi_k\xi_k\,g_j(S)-\chi_j\chi_k\xi_j\,g_k(S)+\chi_j(1-\chi_k\xi_k)\,g_j(S+e_k)-\chi_k(1-\chi_j\xi_j)\,\Gamma\\
+&\geq\chi_j\chi_k\xi_k\bigl[g_j(S)-g_k(S)\bigr]+\chi_j\chi_k(\xi_k-\xi_j)\,g_k(S)+\chi_j(1-\chi_k\xi_k)\Gamma-\chi_k(1-\chi_j\xi_j)\Gamma\\
+&=\chi_j\chi_k\xi_k\bigl[g_j(S)-g_k(S)\bigr]+(\chi_j-\chi_k)\Gamma+\chi_j\chi_k(\xi_k-\xi_j)\bigl[g_k(S)-\Gamma\bigr]\;\geq\;0,
+\end{align*}
+where the first inequality rewrites $-\chi_j\chi_k\xi_jg_k(S)$ as $-\chi_j\chi_k\xi_kg_k(S)+\chi_j\chi_k(\xi_k-\xi_j)g_k(S)$ and uses $g_j(S+e_k)\geq\Gamma$, and the last uses $\xi_j\leq\xi_k$ and $g_k(S)\geq\Gamma$. Taking expectations and averaging over search profiles and consumers gives $\Phi_j\geq\Phi_k$, hence $m_j\Phi_j\geq m_k\Phi_k$ and $\BR_j(a_{-j})\geq\BR_k(a_{-k})$. So $\BR$ maps $\cA_{jk}$ into itself, and $\cA\equiv\bigcap_{j\succeq k}\cA_{jk}$ is a nonempty compact convex set that $\BR$ maps into itself; Brouwer's theorem gives an equilibrium in $\cA$, and if $r<1$ iteration from $\cA$ converges to the unique equilibrium, which therefore lies in $\cA$. For strictness, evaluate at the equilibrium. If $e_{ij}>e_{ik}$ for a consumer with $j,k\in\pl_i$, the first term is strictly positive for that consumer; if $q_{Rj}<q_{Rk}$ and some such consumer uses the public listing with positive probability, then $\chi_j>\chi_k$ and $\Gamma>0$ for that consumer-plan pair; in either case $\Phi_j>\Phi_k$. If instead $m_j>m_k$ with weak inequalities elsewhere, $\Phi_j\geq\Phi_k>0$. In every case $m_j\Phi_j>m_k\Phi_k$ and $a_j^*>a_k^*$. Corollary \ref{cor:steer} restates the placement rule and the strict monotonicity of $h$.
+\end{proof}
+
+\begin{proof}[Proof of Lemma \ref{lem:ge}]
+(i) $(I-\Jac)^{-1}=\sum_{t\geq0}\Jac^t$ and $\|(I-\Jac)^{-1}-I\|_\infty\leq r/(1-r)$. (ii) Write $x=v+\Jac x$ and let $P\equiv\max_ix_i^+$, $N\equiv\max_ix_i^-$. Since $\Jac\leq0$ with absolute row sums at most $r$, $(\Jac x)_i\leq rN$ and $(\Jac x)_i\geq-rP$ for every $i$, so $P\leq\max v+rN$ and $N\leq\max\{0,rP-\min v\}$. If $N>0$ then $(1-r^2)N\leq r\max v-\min v$, impossible when $\min v\geq r\max v$; so $x\geq0$. The case $v\leq0$ follows by applying the argument to $-v$. (iii) Let $v=\mathbf e_j$. For $k\neq j$, $x_k=\sum_l\Jac_{kl}x_l\leq rN$, and for every $i$, $x_i\geq-r\max\{x_j^+,rN\}$, so $N\leq r\max\{x_j^+,rN\}$. If $x_j^+<rN$ then $N\leq r^2N$ forces $N=0$ and then $x_j^+<0$, impossible; so $N\leq rx_j^+$. Then $x_j=1+\sum_{k\neq j}\Jac_{jk}x_k\geq1-r^2N\geq1-r^3x_j^+$; if $x_j\leq0$ the right side is $1>0$, a contradiction, so $x_j>0$ and $(1+r^3)x_j\geq1$. A three-cycle with $\Jac_{12}=\Jac_{23}=\Jac_{31}=-r$ attains the bound.
+\end{proof}
+
+\begin{proof}[Proof of Proposition \ref{prop:margin}]
+$\partial\BR/\partial m_j$ has the single nonzero entry $h'(m_j\Phi_j)\Phi_j>0$ in position $j$, and Lemma \ref{lem:ge}(iii) gives $\partial a_j^*/\partial m_j>0$. A uniform shift in $m$ has direct effects $v_j=h'(m_j\Phi_j)\Phi_j>0$ for every $j$, and Lemma \ref{lem:ge}(ii) gives the sign of every equilibrium effect under the dispersion condition.
+\end{proof}
+
+\begin{proof}[Proof of Proposition \ref{prop:crowd}]
+From \eqref{eq:beta}, $q_{Rj}$ enters $\Phi_j$ only through $\chi_{ipj}$ for search profiles with $R(p)=1$, so
+\begin{equation*}
+\frac{\partial\Phi_j}{\partial q_{Rj}}=-q_B\sum_{i:\,j\in\pl_i}w_i\sum_{p:\,R(p)=1}\mu_{ip}\bigl(1-s_i(p)\bigr)\phi_{ij}(p,a_{-j})<0
+\end{equation*}
+under the hypothesis, and $\partial\BR_j/\partial q_{Rj}<0$. For $k\neq j$, $q_{Rj}$ enters $\Phi_k$ through $\rho_{ij}$ in $\phi_{ik}$ for plans with $R(p)=1$ and consumers with $j,k\in\pl_i$, with $\partial\rho_{ij}/\partial q_{Rj}=(1-s_i(p))(1-q^B_j)\geq0$ and $\partial\phi_{ik}/\partial\rho_{ij}\leq0$, so $\partial\BR_k/\partial q_{Rj}\leq0$. Lemma \ref{lem:ge}(ii) with $v\leq0$ gives $\partial a_k^*/\partial q_{Rj}\leq0$ for every $k$ under the dispersion condition. Then $dW/dq_{Rj}=\partial W/\partial q_{Rj}+\sum_k(\partial W/\partial a_k)(\partial a_k^*/\partial q_{Rj})$, and each term of the sum is a nonnegative factor (Proposition \ref{prop:mono}) times a nonpositive one. For \eqref{eq:tilt}, with two plans, one consumer, $s=0$, and equal margins, $\Phi_1=q_B[\bar\mu_0\phi_1(0)+\bar\mu_R(1-q_{R1})\phi_1(R)]$ and likewise for plan 2; since $S_{-1}=I_2e_2\geq0$, $\phi_1\leq g_1(0)=e_1/(e_0+e_1)$, and since $S_{-2}=I_1e_1\leq e_1$, $\phi_2\geq g_2(e_1)=e_2/(e_0+e_1+e_2)$, so \eqref{eq:tilt} gives $\Phi_2>\Phi_1$ at any $a$ and $a_2^*>a_1^*$ by Corollary \ref{cor:steer}.
+\end{proof}
+
+\begin{proof}[Proof of Proposition \ref{prop:ds}]
+Moving mass for consumer $i$ from $p$ to $p'$ with $s_i(p')\geq s_i(p)$ and $R(p')\geq R(p)$ replaces, in \eqref{eq:beta}, the term $\chi_{ipj}\phi_{ij}(p,a_{-j})$ by $\chi_{ip'j}\phi_{ij}(p',a_{-j})$. Here $\chi_{ip'j}\leq\chi_{ipj}$, and $\phi_{ij}(p',a_{-j})\leq\phi_{ij}(p,a_{-j})$ because every rival's inclusion probability is weakly higher under $p'$ and $\partial\phi_{ij}/\partial\rho_{ik}\leq0$. So every $\Phi_j$ weakly falls at any fixed $a$, and every direct effect $v_j=h'm_j\,\partial\Phi_j$ is nonpositive. Along a path from $\mu$ to $\mu'$ composed of such moves, Lemma \ref{lem:ge}(ii) gives nonpositive equilibrium effects under the dispersion condition at every point, and integrating gives $a^{*\prime}\leq a^*$ componentwise. For the welfare inequality, write $W(a,\mu)$ for \eqref{eq:W}; by Proposition \ref{prop:mono} at $\mu'$, $W(a^{*\prime},\mu')\leq W(a^*,\mu')$, and subtracting $W(a^*,\mu)$ from both sides gives the claim. For a consumer whose search profile is unchanged, $V_i(p,a)$ is nondecreasing in every $a_j$ by the proof of Proposition \ref{prop:mono}, and $a^{*\prime}\leq a^*$.
+\end{proof}
+
+\begin{proof}[Proof of Proposition \ref{prop:gap}]
+(i) $F_i$ is multilinear in $\rho$ with $\partial F_i/\partial\rho_j=\ell_{ij}(\rho)\equiv\E[\log(e_0+S_{-j}+e_j)-\log(e_0+S_{-j})]$. At $\bar\rho\mathbf1$, for plans $j,l\in\pl_i$ with $e_j>e_l$, condition on $S\equiv S_{-jl}$ and a common Bernoulli($\bar\rho$) indicator $I$ for the other plan's inclusion. If $I=0$ the integrands are $\log(e_0+S+e_j)-\log(e_0+S)$ and the same with $e_l$, and the first is larger. If $I=1$ they are $\log(e_0+S+e_l+e_j)-\log(e_0+S+e_l)$ and $\log(e_0+S+e_j+e_l)-\log(e_0+S+e_j)$, with a common first term and $-\log(e_0+S+e_l)>-\log(e_0+S+e_j)$. So $\ell_{ij}>\ell_{il}$ at $\bar\rho\mathbf1$. If $(\rho_j-\bar\rho)_j$ is comonotone with $(e_j)_j$ it is comonotone with $(\ell_{ij})_j$, and Chebyshev's sum inequality gives $\sum_j(\rho_j-\bar\rho)\ell_{ij}\geq J_i^{-1}(\sum_j(\rho_j-\bar\rho))(\sum_j\ell_{ij})=0$; the countermonotone case reverses the inequality. (ii) With two plans, $F_i(\rho_1,\rho_2)=\rho_1\rho_2L_{12}+\rho_1(1-\rho_2)L_1+(1-\rho_1)\rho_2L_2+(1-\rho_1)(1-\rho_2)L_0$ with $L_{12}\equiv\log(e_0+e_1+e_2)$ and $L_0\equiv\log e_0$. Substituting $\rho_1=\bar\rho+d$ and $\rho_2=\bar\rho-d$ gives $\rho_1\rho_2=\bar\rho^2-d^2$, $\rho_1(1-\rho_2)=\bar\rho(1-\bar\rho)+d+d^2$, $(1-\rho_1)\rho_2=\bar\rho(1-\bar\rho)-d+d^2$, $(1-\rho_1)(1-\rho_2)=(1-\bar\rho)^2-d^2$, so $F_i(\rho)-F_i(\bar\rho\mathbf1)=d(L_1-L_2)+d^2(L_1+L_2-L_{12}-L_0)$, and the coefficient of $d^2$ is $\zeta_i>0$ because $(e_0+e_1)(e_0+e_2)-e_0(e_0+e_1+e_2)=e_1e_2>0$.
+\end{proof}
+
+\paragraph{Sophisticated consumers.}
+Suppose instead that consumers observe $a$ and choose search profiles by the logit in Assumption \ref{as:naive} with the realized benefit $V_i(p,a)$ in place of $\hat V_i(p)$; insurers internalize the response. Let $\lambda_{ij}\equiv\log(1+e_{ij}/e_{i0})$, which bounds the gain in expected benefit from adding plan $j$ to any set, $\bar\lambda_j\equiv\max_i\lambda_{ij}$, $\bar\lambda_{jk}\equiv\min\{\bar\lambda_j,\bar\lambda_k\}$, and
+\begin{equation*}
+M_j\equiv\frac{2q_B^2\bar\lambda_j^2}{\sigma_p^2}+\frac{2q_B^2\bar\lambda_j}{\sigma_p},\qquad
+N_{jk}\equiv q_B^2\bar\Lambda_{jk}+\frac{q_B^2}{\sigma_p}\bigl(\bar\lambda_j\bar\Lambda_{jk}+\bar\lambda_k+2\bar\lambda_{jk}\bigr)+\frac{2q_B^2\bar\lambda_j\bar\lambda_k}{\sigma_p^2}.
+\end{equation*}
+
+\begin{proposition}[Sophisticated consumers]\label{prop:soph}
+Under Assumptions \ref{as:inclusion} and \ref{as:cost}, if $\gamma_C>m_jM_j$ for every $j$, each insurer has a unique best response in $[0,A)$, continuous in rivals' placement, and an equilibrium exists. If in addition $r_S\equiv\max_j m_j\sum_{k\neq j}N_{jk}/(\gamma_C-m_jM_j)<1$, the equilibrium is unique.
+\end{proposition}
+
+\begin{proof}
+Fix a consumer and write $V^k_p\equiv\partial V_i(p,a)/\partial a_k$ and $\bar V^k\equiv\sum_{p'}\mu_{ip'}V^k_{p'}$. $V_i(p,\cdot)$ is multilinear in $(\rho_{il})_l$ with each $\rho_{il}$ affine in $a_l$, so $\partial^2V_i/\partial a_k^2=0$; $\partial V_i/\partial\rho_{ik}\in[0,\lambda_{ik}]$ and $|\partial\rho_{ik}/\partial a_k|\leq q_B$, so $V^k_p\in[0,q_B\lambda_{ik}]$; and for $j\neq k$, $\partial^2V_i/\partial\rho_{ij}\partial\rho_{ik}$ is the difference of two increments of $\log$, each in $[0,\lambda_{ik}]$ and each in $[0,\lambda_{ij}]$, so $|\partial^2V_i/\partial a_j\partial a_k|\leq q_B^2\min\{\lambda_{ij},\lambda_{ik}\}$. Logit derivatives give $\partial\mu_{ip}/\partial a_k=(\mu_{ip}/\sigma_p)(V^k_p-\bar V^k)$, so $|\partial\mu_{ip}/\partial a_k|\leq q_B\lambda_{ik}\mu_{ip}/\sigma_p$, and differentiating again, $|\partial^2\mu_{ip}/\partial a_k^2|\leq2q_B^2\lambda_{ik}^2\mu_{ip}/\sigma_p^2$ and $|\partial^2\mu_{ip}/\partial a_j\partial a_k|\leq\mu_{ip}(2q_B^2\lambda_{ij}\lambda_{ik}/\sigma_p^2+2q_B^2\min\{\lambda_{ij},\lambda_{ik}\}/\sigma_p)$. With $P_{ij}\in[0,1]$, $\partial P_{ij}/\partial a_j\in[0,q_B]$, $\partial^2P_{ij}/\partial a_j^2=0$, $|\partial P_{ij}/\partial a_k|\leq q_B\bar\Lambda_{jk}$, and $|\partial^2P_{ij}/\partial a_j\partial a_k|\leq q_B^2\bar\Lambda_{jk}$, summing the product rule over search profiles and averaging over consumers gives $|\partial^2D_j/\partial a_j^2|\leq M_j$ and $|\partial^2D_j/\partial a_j\partial a_k|\leq N_{jk}$. With $\gamma_C>m_jM_j$, the marginal profit $f_j(a_j;a_{-j})$ is strictly decreasing with slope at most $-(\gamma_C-m_jM_j)\equiv-\vartheta_j$ and tends to $-\infty$ as $a_j\to A$, so $\pi_j$ has a unique maximizer in $[0,A)$, the root of $f_j$ when $f_j(0)>0$ and $0$ otherwise, continuous in $a_{-j}$ by the maximum theorem; since $\partial D_j/\partial a_j\leq q_B(1+\bar\lambda_j/\sigma_p)$ the best responses lie in a compact box and Brouwer's theorem gives existence. For uniqueness, take rival profiles $a_{-j},a'_{-j}$ with best responses $x,x'$ and let $\delta\equiv\sup_{a_j}|f_j(a_j;a_{-j})-f_j(a_j;a'_{-j})|\leq m_j\sum_{k\neq j}N_{jk}|a_k-a'_k|$. If both are interior, $|f_j(x';a_{-j})|\leq\delta$ gives $|x-x'|\leq\delta/\vartheta_j$; if $x=0<x'$, then $f_j(0;a_{-j})\leq0$ gives $f_j(0;a'_{-j})\leq\delta$ and $0=f_j(x';a'_{-j})\leq\delta-\vartheta_jx'$, so $x'\leq\delta/\vartheta_j$; the other cases are symmetric or trivial. So $\BR$ is a contraction with constant $r_S$ and Banach's theorem gives uniqueness.
+\end{proof}
+
+# Computation {#sec-computation}
+
+Both expectations over consideration sets in the likelihood reduce to one-dimensional integrals. Fix a consumer and a search profile, write $\tilde e_j\equiv e_{ij}/e_{i0}$ for plan $j\in\pl_i$, and let $f_j(t)\equiv1-\rho_j(1-e^{-t\tilde e_j})$, where $\rho_j$ is the probability that plan $j$ enters the set. Because $1/y=\int_0^\infty e^{-ty}\,dt$ for $y>0$ and inclusion is independent across plans, the probability that the consumer chooses a default option $d$ is
+
+$$\E\Bigl[\frac{e_{id}}{e_{i0}+S}\Bigr]=\frac{e_{id}}{e_{i0}}\int_0^\infty e^{-t}\prod_{j\in\pl_i}f_j(t)\,dt,$$
+
+and the probability that she chooses plan $j$ is $\rho_j$ times the same expression with $e_{id}$ replaced by $e_{ij}$, $e_{i0}$ replaced by $e_{i0}+e_{ij}$, and the product taken over plans other than $j$. Because $\log(1+y)=\int_0^\infty e^{-t}(1-e^{-ty})\,t^{-1}\,dt$, the expected inclusive value is
+
+$$\E\Bigl[\log\Bigl(e_{i0}+\sum_{j\in\cC}e_{ij}\Bigr)\Bigr]=\log e_{i0}+\int_0^\infty e^{-t}\Bigl(1-\prod_{j\in\pl_i}f_j(t)\Bigr)\frac{dt}{t}.$$
+
+The perceived benefit $\hat V_i(p)$ is this expression with every $\rho_j$ set to $\hat\rho_i(p)$, and realized welfare $V_i(p,a)$ is the expression at the actual inclusion probabilities. After the substitution $t=e^x$, each integrand is smooth and bounded, decays exponentially as $x\to-\infty$ and double-exponentially as $x\to\infty$, and we evaluate it with the trapezoid rule on a fixed grid in $x$. The derivatives of the likelihood follow by differentiating the finite sum. We check both formulas against exact enumeration of every consideration set for menus small enough to enumerate, and against a finer and wider grid for menus of up to 80 plans.
 
 \bibliographystyle{aer}
 \bibliography{BibTeX_Library}

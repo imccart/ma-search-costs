@@ -4,7 +4,7 @@
 # are indicators of one latent search cost: each is a logit in the shared index
 # B_i - c_i - kappa_a, and a bene-year's action likelihood is the PRODUCT of the
 # indicator probabilities conditional on the person random effect, integrated
-# over it (agents/model.md, "Measurement structure"). The load-bearing
+# over it (notes/model.md, "Measurement structure"). The load-bearing
 # assumption is CONDITIONAL INDEPENDENCE of the indicators given the search
 # cost — they co-move only through the shared latent and the random effect, with
 # no extra pairwise link (e.g. web/phone substitution).

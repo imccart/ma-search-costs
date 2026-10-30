@@ -1,6 +1,6 @@
 # 9-counterfactual.R — Decision-support counterfactual (lower search cost)
 #
-# The deliverable of the structural model (agents/model.md, "Counterfactuals").
+# The deliverable of the structural model (notes/model.md, "Counterfactuals").
 # A decision-support intervention lowers the per-person search cost c_i, which
 # raises the probability of each search action, which widens consideration
 # breadth K_i, which brings more (and better) plans into the considered set, which
@@ -64,22 +64,22 @@ sigma <- exp(th$log_sigma_alpha)
 R     <- length(nu_draws)
 
 
-# ---- Mean-variance dominance per market (replicates 5-construct-dominance.R) --
-# Primary RF definition: within a county-year and a plan_category x has_partd
-# group, plan a is dominated if some plan b has mean_cost_b <= mean_cost_a AND
-# var_cost_b <= var_cost_a, strict on at least one. Computed inside each market
-# (the bene's own choice set), among MA plans only; FFS is the outside option and
-# never "dominated".
-compute_market_dominated <- function(mkt) {
+# ---- Mean-variance dominance for one beneficiary (5-construct-dominance.R rule) --
+# Within a plan_category x has_partd group of the bene's market, plan a is
+# dominated if some plan b has mean_cost_b <= mean_cost_a AND var_cost_b <=
+# var_cost_a, strict on at least one. Costs are the bene's own expected cost and
+# risk-cell variance in each plan (bene_mc / bene_vc, aligned to market plan
+# order). MA plans only; FFS is the outside option and never "dominated".
+compute_bene_dominated <- function(mkt, mc_all, vc_all) {
   dom   <- rep(FALSE, nrow(mkt))
   is_ma <- mkt$plan_kind == "MA"
   if (sum(is_ma) <= 1) return(dom)
   grp <- paste(mkt$plan_category, mkt$has_partd)
   for (g in unique(grp[is_ma])) {
-    idx <- which(is_ma & grp == g & !is.na(mkt$mean_cost) & !is.na(mkt$var_cost))
+    idx <- which(is_ma & grp == g & !is.na(mc_all) & !is.na(vc_all))
     n   <- length(idx)
     if (n <= 1) next
-    mc <- mkt$mean_cost[idx]; vc <- mkt$var_cost[idx]
+    mc <- mc_all[idx]; vc <- vc_all[idx]
     for (a in seq_len(n)) for (b in seq_len(n)) {
       if (a == b) next
       md <- mc[a] - mc[b]; vd <- vc[a] - vc[b]   # positive = b weakly better
@@ -88,7 +88,6 @@ compute_market_dominated <- function(mkt) {
   }
   dom
 }
-market_dominated <- lapply(markets, compute_market_dominated)
 
 
 # ---- Action profiles and dose grid ----------------------------------------
@@ -141,7 +140,8 @@ for (bi in seq_along(idx_by_bene)) {
     draw_ll <- draw_ll + oll
 
     # 16-profile choice-stage outcomes (dose- and draw-independent).
-    dom_flag <- market_dominated[[mid]]; mc_i <- bene_mc[[i]]
+    mc_i <- bene_mc[[i]]
+    dom_flag <- compute_bene_dominated(mkt, mc_i, bene_vc[[i]])
     dom16 <- con16 <- ec16 <- iv16 <- numeric(16)
     for (k in seq_len(16)) {
       phi_c <- compute_phi(mkt, sal, K16[k], brow)

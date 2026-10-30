@@ -1,0 +1,2 @@
+replication,start,block,objective,objective_at_truth,convergence_code,message,max_gradient,max_projected_gradient,converged,bounds_hit,evaluations,seconds
+1,2,consideration,15.0940508406591,15.0962768306721,0,CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL,9.76129235281157e-06,9.76129235281259e-06,TRUE,0,56,6508.92

@@ -1,6 +1,6 @@
 # VRDC analysis (`code/analysis/vrdc/`)
 
-R-side individual-level structural estimation. Runs in a Jupyter analytic container (separate from SAS Enterprise Guide) under an RStudio project rooted at `ma-search/`. Reads the bene panel and utilization panels exported manually from SAS, projects bene utilization through PBP cost-sharing schedules, and estimates the three-stage search model by joint maximum likelihood over the observed search actions and the plan choice (spec in `agents/model.md`).
+R-side individual-level structural estimation. Runs in a Jupyter analytic container (separate from SAS Enterprise Guide) under an RStudio project rooted at `ma-search/`. Reads the bene panel and utilization panels exported manually from SAS, projects bene utilization through PBP cost-sharing schedules, and estimates the three-stage search model by joint maximum likelihood over the observed search actions and the plan choice (spec in `notes/model.md`).
 
 ## Run order
 
@@ -73,7 +73,7 @@ non-smooth in the action thresholds).
 
 ## Model spec
 
-Three-stage Plan-Finder-anchored search; full spec in `agents/model.md`. 31 free
+Three-stage Plan-Finder-anchored search; full spec in `notes/model.md`. 31 free
 parameters:
 - Utility (5): alpha, delta, beta, xi_FFS, psi (incumbent premium / switching cost)
 - Search cost (8): gamma_0 + log-income, education, age, dual, ADI, handbook
@@ -104,6 +104,6 @@ After all filters, the analysis sample N depends on coverage rates; expect ~30K�
 
 ## Variable provenance
 
-- All MCBS variable names verified against the year-specific 2015/2016/2017/2018 LDS codebooks (archived in `background/codebooks/`). Several variables were renamed mid-decade (`H_URBRUR`→`H_CBSA`, `ADI`→`CENSADI`→`ADINATNL`, `CS1YRWGT`→`CEYRSWGT`); the year-conditional macro logic in `2-extract-mcbs.sas` resolves these. Full mapping in `agents/data.md`.
+- All MCBS variable names verified against the year-specific 2015/2016/2017/2018 LDS codebooks (archived in `background/codebooks/`). Several variables were renamed mid-decade (`H_URBRUR`→`H_CBSA`, `ADI`→`CENSADI`→`ADINATNL`, `CS1YRWGT`→`CEYRSWGT`); the year-conditional macro logic in `2-extract-mcbs.sas` resolves these. Full mapping in `notes/data.md`.
 - MBSF variable names verified against ResDAC documentation.
-- For the post-2018 redesign items (CMPRPLN, RVWCOST, INTERNET, MAMONPRM, MYENROLL segment, etc.), see `agents/data.md` "What's post-2018 only."
+- For the post-2018 redesign items (CMPRPLN, RVWCOST, INTERNET, MAMONPRM, MYENROLL segment, etc.), see `notes/data.md` "What's post-2018 only."

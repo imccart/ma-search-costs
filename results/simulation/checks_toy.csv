@@ -1,0 +1,28 @@
+check,value,tolerance,pass
+profile_index matches the profile grid,0,0,TRUE
+R(p) equals the website indicator,0,0,TRUE
+intensity n(p) matches its definition,0,1e-12,TRUE
+inclusion_prob matches the product form,0,1e-15,TRUE
+grid weights integrate to one,2.68673971959288e-14,1e-10,TRUE
+"choice probabilities vs enumeration, utility spread 1",4.68791672147972e-14,1e-09,TRUE
+"choice probabilities, baseline vs fine grid, spread 1",4.68514116391816e-14,1e-09,TRUE
+"choice probabilities sum to one, spread 1",2.26596519325994e-13,1e-09,TRUE
+"expected inclusive value vs enumeration, spread 1",3.07309733216243e-13,1e-09,TRUE
+"choice probabilities vs enumeration, utility spread 4",6.18394224716212e-14,1e-09,TRUE
+"choice probabilities, baseline vs fine grid, spread 4",6.18394224716212e-14,1e-09,TRUE
+"choice probabilities sum to one, spread 4",2.65898414397725e-13,1e-09,TRUE
+"expected inclusive value vs enumeration, spread 4",3.20632409511745e-12,1e-09,TRUE
+"choice probabilities vs enumeration, utility spread 8",1.18016707517654e-13,1e-09,TRUE
+"choice probabilities, baseline vs fine grid, spread 8",1.18016707517654e-13,1e-09,TRUE
+"choice probabilities sum to one, spread 8",3.41726646979623e-13,1e-09,TRUE
+"expected inclusive value vs enumeration, spread 8",1.3894041472895e-10,1e-09,TRUE
+"perceived benefit, quadrature vs enumeration at J = 8",6.65245636355394e-13,1e-09,TRUE
+per-beneficiary log-likelihood vs enumeration,2.41584530158434e-13,1e-08,TRUE
+transform Jacobian vs numerical,1.8931967105118e-11,1e-07,TRUE
+to_free inverts to_struct,0,1e-12,TRUE
+"gradient vs numerical, point 1",1.33914125145326e-09,1e-06,TRUE
+"weighted scores sum to the gradient, point 1",0,1e-12,TRUE
+"gradient vs numerical, point 2",2.01620728916763e-09,1e-06,TRUE
+"weighted scores sum to the gradient, point 2",0,1e-12,TRUE
+"gradient vs numerical, point 3",1.40975352528547e-09,1e-06,TRUE
+"weighted scores sum to the gradient, point 3",0,1e-12,TRUE

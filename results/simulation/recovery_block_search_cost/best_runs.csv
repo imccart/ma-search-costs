@@ -1,0 +1,2 @@
+replication,start,block,objective,objective_at_truth,convergence_code,message,max_gradient,max_projected_gradient,converged,bounds_hit,evaluations,seconds
+1,1,search_cost,13.9673261178309,14.1524961603358,0,CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH,0.0004814983335952,5.63377637206042e-05,TRUE,2,79,110
